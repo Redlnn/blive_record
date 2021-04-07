@@ -1,5 +1,6 @@
 #  B站直播录播姬
 - 作者: Red_lnn
+- 不允许将本项目运用于违法以及商业用途
 - 仅支持单个主播，多个主播请复制多份并分开单独启动
 - 运行时如要停止录制并退出，请按键盘 Ctrl+C
 - 如要修改录制设置，请以纯文本方式打开.py文件
@@ -13,6 +14,6 @@
 Windows: pip install -r requirements.txt
 Linux: python3 -m pip install -r requirements.txt
 ```
-4. 下载ffmpeg并设置环境变量（(下载地址)[http://www.ffmpeg.org/download.html]）
+4. 下载 ffmpeg 并正确设置环境变量（[下载地址](http://www.ffmpeg.org/download.html)）
 5. Windows 直接双击运行`start.bat`
 6. Linux 先运行 `chmod +x start.sh` 再运行 `./start.sh`
