@@ -33,18 +33,18 @@ from regex import match
 room_id = 1151716  # 要录制的B站直播的直播ID
 segment_time = 3600  # 录播分段时长（单位：秒）
 check_time = 120  # 开播检测间隔（单位：秒）
-file_extensions = 'flv'
+file_extensions = 'flv'  # 录制文件后缀名（文件格式）
 verbose = True  # 是否打印ffmpeg输出信息到控制台
 save_log = True  # 是否保存日志信息
-debug = False  # 暂时无效
+debug = False  # 是否显示并保存调试信息
 '''
 *------------以上为可配置项-------------*
 '''
 
-record_status = False
-kill_times = 0
+record_status = False  # 录制状态，True为录制中
+kill_times = 0  # 尝试强制结束FFmpeg的次数
 
-logging.addLevelName(15, 'FFmpeg')
+logging.addLevelName(15, 'FFmpeg')  # 自定义FFmpeg的日志级别
 logger = logging.getLogger('Record')
 logger.setLevel(logging.DEBUG)
 
@@ -73,10 +73,16 @@ if save_log:
 
 
 def get_timestamp() -> int:
+    """
+    获取当前时间戳
+    """
     return int(time.time())
 
 
 def get_time() -> str:
+    "
+    获取格式化后的时间
+    "
     time_now = get_timestamp()
     time_local = time.localtime(time_now)
     dt = time.strftime("%Y%m%d_%H%M%S", time_local)
@@ -84,28 +90,28 @@ def get_time() -> str:
 
 
 def record():
+    """
+    录制过程中要执行的检测与判断
+    """
     global p, record_status, last_record_time, kill_times  # noqa
     while True:
         line = p.stdout.readline().decode()
         logger.log(15, line.rstrip())
         if match('video:[0-9kmgB]* audio:[0-9kmgB]* subtitle:[0-9kmgB]*', line):
-            record_status = True
+            record_status = False  # 如果FFmpeg正常结束录制则退出本循环
             break
         elif match('frame=[0-9]', line) or 'Opening' in line:
             last_record_time = get_timestamp()  # 获取最后录制的时间
-        time_diff = get_timestamp() - last_record_time
+        time_diff = get_timestamp() - last_record_time  # 计算上次录制到目前的时间差
         if time_diff >= 60:
             logger.error('最后一次录制到目前已超过60s，将尝试发送终止信号')
             logger.debug(f'间隔时间：{time_diff}s')
             kill_times += 1
             p.send_signal(signal.SIGTERM)  # 若最后一次录制到目前已超过20s，则认为FFmpeg卡死，尝试发送终止信号
-            if kill_times >= 10:
+            if kill_times >= 3:
                 logger.critical('由于无法结束FFmpeg进程，将尝试自我了结')
                 sys.exit(1)
-                # logger.critical('自我了结失败，进入死循环')
-                # while True:
-                #     pass
-        if p.poll() is not None:
+        if p.poll() is not None:  # 如果FFmpeg已退出但没有被本循环第一个判断捕捉到，则当作异常退出
             logger.error('ffmpeg未正常退出，请检查日志文件！')
             record_status = False
             break
@@ -139,7 +145,7 @@ def main():
         if os.path.isfile(os.path.join('download')):
             logger.error('存在与下载文件夹同名的文件')
             sys.exit(1)
-        logger.info('正在直播，开始录制')
+        logger.info('正在直播，准备开始录制')
         m3u8_list = requests.get(
             f'https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl?cid={room_id}&platform=h5&qn=10000')
         m3u8_address = loads(m3u8_list.text)['data']['durl'][0]['url']
@@ -158,15 +164,16 @@ def main():
                 command_str += _
             logger.debug(command_str)
         p = Popen(command, stdin=PIPE, stdout=PIPE, stderr=STDOUT, shell=False)
+        record_status = True
         start_time = last_record_time = get_timestamp()
         try:
             t = threading.Thread(target=record)
             t.start()
             while True:
-                if record_status:
+                if not record_status:
                     break
                 time.sleep(30)
-                if record_status:
+                if not record_status:
                     break
                 logger.info(f'--==>>> 已录制 {round((get_timestamp() - start_time) / 60, 2)} 分钟 <<<==--')
         except KeyboardInterrupt:
