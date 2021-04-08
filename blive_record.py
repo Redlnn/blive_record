@@ -137,11 +137,7 @@ def main():
             logger.info('Bye!')
             sys.exit(0)
         logger.info(f'录制结束，等待{check_time}s后重新开始检测直播间')
-        try:
-            time.sleep(check_time)
-        except KeyboardInterrupt:
-            logger.info('Bye!')
-            sys.exit(0)
+        time.sleep(check_time)
 
 
 if __name__ == '__main__':
@@ -150,4 +146,8 @@ if __name__ == '__main__':
     logger.info('如要修改录制设置，请以纯文本方式打开.py文件')
     logger.info('准备开始录制...')
     time.sleep(0.3)
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        logger.info('Bye!')
+        sys.exit(0)
