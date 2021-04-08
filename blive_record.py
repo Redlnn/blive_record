@@ -92,7 +92,12 @@ def main():
         while True:
             logger.info('------------------------------')
             logger.info(f'正在检测直播间：{room_id}')
-            room_info = requests.get(f'https://api.live.bilibili.com/room/v1/Room/get_info?room_id={room_id}')
+            try:
+                room_info = requests.get(f'https://api.live.bilibili.com/room/v1/Room/get_info?room_id={room_id}', timeout=5)
+            except (requests.exceptions.ReadTimeout, requests.exceptions.Timeout, requests.exceptions.ConnectTimeout):
+                logger.error(f'无法连接至B站API，等待{check_time}s后重新开始检测')
+                time.sleep(check_time)
+                continue
             live_status = loads(room_info.text)['data']['live_status']
             if live_status == 1:
                 break
