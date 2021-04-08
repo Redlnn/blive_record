@@ -133,11 +133,15 @@ def main():
                     break
                 logger.info(f'--==>>> 已录制 {round((int(time.time()) - start_time) / 60, 2)} 分钟 <<<==--')
         except KeyboardInterrupt:
-            logger.info('结束录制，等待ffmpeg退出后自动退出本程序')
+            logger.info('停止录制，等待ffmpeg退出后自动退出本程序')
             logger.info('Bye!')
             sys.exit(0)
         logger.info(f'录制结束，等待{check_time}s后重新开始检测直播间')
-        time.sleep(check_time)
+        try:
+            time.sleep(check_time)
+        except KeyboardInterrupt:
+            logger.info('Bye!')
+            sys.exit(0)
 
 
 if __name__ == '__main__':
