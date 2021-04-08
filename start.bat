@@ -1,8 +1,8 @@
 @echo off
-set a=%~s0
-cd %a%\..
+%~d0
+cd %~s0\..
 cls
 python blive_record.py
 echo.
-echo ç¨‹åºå·²é€€å‡ºï¼Œè¯·æŒ‰ä»»æ„é”®é€€å‡º...
+echo ³ÌÐòÒÑÍË³ö£¬Çë°´ÈÎÒâ¼üÍË³ö...
 pause>nul
