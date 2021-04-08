@@ -14,6 +14,7 @@
 # import ffmpy3  # noqa
 import logging
 import os
+import signal
 import sys
 import threading
 import time
@@ -32,24 +33,30 @@ from regex import match
 room_id = 1151716  # 要录制的B站直播的直播ID
 segment_time = 3600  # 录播分段时长（单位：秒）
 check_time = 120  # 开播检测间隔（单位：秒）
-debug = False  # 是否打印ffmpeg输出信息到控制台
+file_extensions = 'flv'
+verbose = True  # 是否打印ffmpeg输出信息到控制台
 save_log = True  # 是否保存日志信息
+debug = False  # 暂时无效
 '''
 *------------以上为可配置项-------------*
 '''
 
 record_status = False
+kill_times = 0
 
+logging.addLevelName(15, 'FFmpeg')
 logger = logging.getLogger('Record')
+logger.setLevel(logging.DEBUG)
+
 fms = '[%(asctime)s %(levelname)s] %(message)s'
 # datefmt = "%Y-%m-%d %H:%M:%S"
 datefmt = "%H:%M:%S"
 
-logger.setLevel(logging.DEBUG)
-
 default_handler = logging.StreamHandler(sys.stdout)
 if debug:
     default_handler.setLevel(logging.DEBUG)
+elif verbose:
+    default_handler.setLevel(15)
 else:
     default_handler.setLevel(logging.INFO)
 default_handler.setFormatter(logging.Formatter(fms, datefmt=datefmt))
@@ -57,36 +64,55 @@ logger.addHandler(default_handler)
 
 if save_log:
     file_handler = logging.FileHandler("debug.log", mode='w+', encoding='utf-8')
-    file_handler.setLevel(logging.DEBUG)
+    if debug:
+        default_handler.setLevel(logging.DEBUG)
+    else:
+        default_handler.setLevel(15)
     file_handler.setFormatter(logging.Formatter(fms, datefmt=datefmt))
     logger.addHandler(file_handler)
 
 
+def get_timestamp() -> int:
+    return int(time.time())
+
+
 def get_time() -> str:
-    """
-    :return: 当前时间，格式1970-01-01_12-00-00
-    """
-    time_now = int(time.time())
+    time_now = get_timestamp()
     time_local = time.localtime(time_now)
     dt = time.strftime("%Y%m%d_%H%M%S", time_local)
     return dt
 
 
 def record():
-    global p, record_status  # noqa
+    global p, record_status, last_record_time, kill_times  # noqa
     while True:
         line = p.stdout.readline().decode()
-        logger.debug(line.rstrip())
+        logger.log(15, line.rstrip())
         if match('video:[0-9kmgB]* audio:[0-9kmgB]* subtitle:[0-9kmgB]*', line):
             record_status = True
             break
+        elif match('frame=[0-9]', line) or 'Opening' in line:
+            last_record_time = get_timestamp()  # 获取最后录制的时间
+        time_diff = get_timestamp() - last_record_time
+        if time_diff >= 60:
+            logger.error('最后一次录制到目前已超过60s，将尝试发送终止信号')
+            logger.debug(f'间隔时间：{time_diff}s')
+            kill_times += 1
+            p.send_signal(signal.SIGTERM)  # 若最后一次录制到目前已超过20s，则认为FFmpeg卡死，尝试发送终止信号
+            if kill_times >= 10:
+                logger.critical('由于无法结束FFmpeg进程，将尝试自我了结')
+                sys.exit(1)
+                # logger.critical('自我了结失败，进入死循环')
+                # while True:
+                #     pass
         if p.poll() is not None:
-            logger.error('ffmpeg未正常退出，请检测日志文件')
+            logger.error('ffmpeg未正常退出，请检查日志文件！')
+            record_status = False
             break
 
 
 def main():
-    global p, room_id, record_status  # noqa
+    global p, room_id, record_status, last_record_time, kill_times  # noqa
     while True:
         record_status = False
         while True:
@@ -124,9 +150,15 @@ def main():
                    'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.106 Safari/537.36?"', '-i',
                    m3u8_address, '-c:v', 'copy', '-c:a', 'copy',
                    '-f', 'segment', '-segment_time', str(segment_time), '-segment_start_number', '1',
-                   os.path.join('download', f'[Room_{room_id}] {get_time()}_part%03d.mp4'), '-y']
+                   os.path.join('download', f'[Room_{room_id}] {get_time()}_part%03d.{file_extensions}'), '-y']
+        if debug:
+            logger.debug('FFmpeg命令如下 ↓')
+            command_str = ''
+            for _ in command:
+                command_str += _
+            logger.debug(command_str)
         p = Popen(command, stdin=PIPE, stdout=PIPE, stderr=STDOUT, shell=False)
-        start_time = int(time.time())
+        start_time = last_record_time = get_timestamp()
         try:
             t = threading.Thread(target=record)
             t.start()
@@ -136,12 +168,15 @@ def main():
                 time.sleep(30)
                 if record_status:
                     break
-                logger.info(f'--==>>> 已录制 {round((int(time.time()) - start_time) / 60, 2)} 分钟 <<<==--')
+                logger.info(f'--==>>> 已录制 {round((get_timestamp() - start_time) / 60, 2)} 分钟 <<<==--')
         except KeyboardInterrupt:
-            logger.info('停止录制，等待ffmpeg退出后自动退出本程序')
+            p.send_signal(signal.CTRL_C_EVENT)
+            logger.info('停止录制，等待ffmpeg退出后本程序会自动退出')
+            logger.info('若长时间卡住，请再次按下ctrl+c (可能会损坏视频文件)')
             logger.info('Bye!')
             sys.exit(0)
-        logger.info(f'录制结束，等待{check_time}s后重新开始检测直播间')
+        kill_times = 0
+        logger.info(f'FFmpeg已退出，等待{check_time}s后重新开始检测直播间')
         time.sleep(check_time)
 
 
