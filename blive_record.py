@@ -52,7 +52,7 @@ if debug:
     default_handler.setLevel(logging.DEBUG)
 else:
     default_handler.setLevel(logging.INFO)
-default_handler.setFormatter(logging.ColoredFormatter(fms, datefmt=datefmt))
+default_handler.setFormatter(logging.Formatter(fms, datefmt=datefmt))
 logger.addHandler(default_handler)
 
 if save_log:
