@@ -80,9 +80,9 @@ def get_timestamp() -> int:
 
 
 def get_time() -> str:
-    "
+    """
     获取格式化后的时间
-    "
+    """
     time_now = get_timestamp()
     time_local = time.localtime(time_now)
     dt = time.strftime("%Y%m%d_%H%M%S", time_local)
