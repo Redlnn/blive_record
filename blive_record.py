@@ -31,8 +31,8 @@ from regex import match
 # room_id = 1151716  # 莴苣某人
 # room_id = 1857249  # Red_lnn
 room_id = 1151716  # 要录制的B站直播的直播ID
-segment_time = 3600  # 录播分段时长（单位：秒）
-check_time = 120  # 开播检测间隔（单位：秒）
+segment_time = 1800  # 录播分段时长（单位：秒，大于等于1小时可能会造成FFmpeg退出录制）
+check_time = 60  # 开播检测间隔（单位：秒）
 file_extensions = 'flv'  # 录制文件后缀名（文件格式）
 verbose = True  # 是否打印ffmpeg输出信息到控制台
 save_log = True  # 是否保存日志信息
@@ -63,7 +63,10 @@ default_handler.setFormatter(logging.Formatter(fms, datefmt=datefmt))
 logger.addHandler(default_handler)
 
 if save_log:
-    file_handler = logging.FileHandler("debug.log", mode='w+', encoding='utf-8')
+    # file_handler = logging.FileHandler("debug.log", mode='w+', encoding='utf-8')
+    if not os.path.exists(os.path.join('logs')):
+        os.mkdir(os.path.join('logs'))
+    file_handler = logging.handlers.TimedRotatingFileHandler(os.path.join('logs', 'debug.log'), 'midnight', encoding='utf-8')
     if debug:
         default_handler.setLevel(logging.DEBUG)
     else:
@@ -97,7 +100,7 @@ def record():
     while True:
         line = p.stdout.readline().decode()
         logger.log(15, line.rstrip())
-        if match('video:[0-9kmgB]* audio:[0-9kmgB]* subtitle:[0-9kmgB]*', line):
+        if match('video:[0-9kmgB]* audio:[0-9kmgB]* subtitle:[0-9kmgB]*', line) or 'Exiting normally' in line:
             record_status = False  # 如果FFmpeg正常结束录制则退出本循环
             break
         elif match('frame=[0-9]', line) or 'Opening' in line:
@@ -177,14 +180,14 @@ def main():
                     break
                 logger.info(f'--==>>> 已录制 {round((get_timestamp() - start_time) / 60, 2)} 分钟 <<<==--')
         except KeyboardInterrupt:
-            p.send_signal(signal.CTRL_C_EVENT)
+            # p.send_signal(signal.CTRL_C_EVENT)
             logger.info('停止录制，等待ffmpeg退出后本程序会自动退出')
             logger.info('若长时间卡住，请再次按下ctrl+c (可能会损坏视频文件)')
             logger.info('Bye!')
             sys.exit(0)
         kill_times = 0
-        logger.info(f'FFmpeg已退出，等待{check_time}s后重新开始检测直播间')
-        time.sleep(check_time)
+        logger.info('FFmpeg已退出，重新开始检测直播间')
+        # time.sleep(check_time)
 
 
 if __name__ == '__main__':
