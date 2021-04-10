@@ -20,6 +20,7 @@ import threading
 import time
 import traceback
 from json import loads
+from logging import handlers
 from subprocess import PIPE, Popen, STDOUT
 
 import requests
@@ -66,7 +67,7 @@ if save_log:
     # file_handler = logging.FileHandler("debug.log", mode='w+', encoding='utf-8')
     if not os.path.exists(os.path.join('logs')):
         os.mkdir(os.path.join('logs'))
-    file_handler = logging.handlers.TimedRotatingFileHandler(os.path.join('logs', 'debug.log'), 'midnight', encoding='utf-8')
+    file_handler = handlers.TimedRotatingFileHandler(os.path.join('logs', 'debug.log'), 'midnight', encoding='utf-8')
     if debug:
         default_handler.setLevel(logging.DEBUG)
     else:
@@ -99,22 +100,30 @@ def record():
     global p, record_status, last_record_time, kill_times  # noqa
     while True:
         line = p.stdout.readline().decode()
+        p.stdout.flush()
         logger.log(15, line.rstrip())
         if match('video:[0-9kmgB]* audio:[0-9kmgB]* subtitle:[0-9kmgB]*', line) or 'Exiting normally' in line:
             record_status = False  # 如果FFmpeg正常结束录制则退出本循环
             break
         elif match('frame=[0-9]', line) or 'Opening' in line:
             last_record_time = get_timestamp()  # 获取最后录制的时间
+        elif 'Failed to read handshake response' in line:
+            time.sleep('5')  # FFmpeg读取m3u8流失败，等个5s康康会不会恢复
+            continue
         time_diff = get_timestamp() - last_record_time  # 计算上次录制到目前的时间差
-        if time_diff >= 60:
-            logger.error('最后一次录制到目前已超过60s，将尝试发送终止信号')
+        if time_diff >= 65:
+            logger.error('最后一次录制到目前已超65s，将尝试发送终止信号')
             logger.debug(f'间隔时间：{time_diff}s')
             kill_times += 1
-            p.send_signal(signal.SIGTERM)  # 若最后一次录制到目前已超过20s，则认为FFmpeg卡死，尝试发送终止信号
+            p.send_signal(signal.SIGTERM)  # 若最后一次录制到目前已超过65s，则认为FFmpeg卡死，尝试发送终止信号
+            time.sleep(0.5)
             if kill_times >= 3:
                 logger.critical('由于无法结束FFmpeg进程，将尝试自我了结')
                 sys.exit(1)
-        if p.poll() is not None:  # 如果FFmpeg已退出但没有被本循环第一个判断捕捉到，则当作异常退出
+        if 'Immediate exit requested' in line:
+            logger.info('FFmpeg已被强制结束')
+            break
+        if p.poll() is not None:  # 如果FFmpeg已退出但没有被上一个判断和本循环第一个判断捕捉到，则当作异常退出
             logger.error('ffmpeg未正常退出，请检查日志文件！')
             record_status = False
             break
@@ -152,7 +161,8 @@ def main():
         m3u8_list = requests.get(
             f'https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl?cid={room_id}&platform=h5&qn=10000')
         m3u8_address = loads(m3u8_list.text)['data']['durl'][0]['url']
-        command = ['ffmpeg', '-headers',
+        # 下面命令中的timeout单位为微秒，10000000us为10s（https://www.cnblogs.com/zhifa/p/12345376.html）
+        command = ['ffmpeg', '-rw_timeout', '10000000', '-stimeout', '10000000', '-timeout', '10000000', '-listen_timeout', '10000000', '-headers',
                    '"Accept: */*? Accept-Encoding: gzip, deflate, br? Accept-Language: zh,zh-TW;q=0.9,en-US;q=0.8,en;'
                    'q=0.7,zh-CN;q=0.6,ru;q=0.5? Origin: https://www.bilibili.com? '
                    'User-Agent: Mozilla/5.0 (Windows NT 10.0;Win64; x64) '
