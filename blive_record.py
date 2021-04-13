@@ -162,7 +162,7 @@ def main():
             f'https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl?cid={room_id}&platform=h5&qn=10000')
         m3u8_address = loads(m3u8_list.text)['data']['durl'][0]['url']
         # 下面命令中的timeout单位为微秒，10000000us为10s（https://www.cnblogs.com/zhifa/p/12345376.html）
-        command = ['ffmpeg', '-rw_timeout', '10000000', '-stimeout', '10000000', '-timeout', '10000000', '-listen_timeout', '10000000', '-headers',
+        command = ['ffmpeg', '-rw_timeout', '10000000', '-timeout', '10000000', '-listen_timeout', '10000000', '-headers',
                    '"Accept: */*? Accept-Encoding: gzip, deflate, br? Accept-Language: zh,zh-TW;q=0.9,en-US;q=0.8,en;'
                    'q=0.7,zh-CN;q=0.6,ru;q=0.5? Origin: https://www.bilibili.com? '
                    'User-Agent: Mozilla/5.0 (Windows NT 10.0;Win64; x64) '
