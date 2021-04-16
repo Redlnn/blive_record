@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 
-'''
+"""
 *--------------------------------------*
  B站直播录播姬 By: Red_lnn
  仅支持单个主播，多个主播请复制多份并分开单独启动
@@ -9,7 +9,7 @@
  如要修改录制设置，请以纯文本方式打开.py文件
  利用ffmpeg直接抓取主播推送的流，不需要打开浏览器
 *--------------------------------------*
-'''
+"""
 
 # import ffmpy3  # noqa
 import logging
@@ -26,9 +26,9 @@ from subprocess import PIPE, Popen, STDOUT
 import requests
 from regex import match
 
-'''
+"""
 *------------以下为可配置项-------------*
-'''
+"""
 # room_id = 1151716  # 莴苣某人
 # room_id = 1857249  # Red_lnn
 room_id = 1151716  # 要录制的B站直播的直播ID
@@ -38,9 +38,9 @@ file_extensions = 'flv'  # 录制文件后缀名（文件格式）
 verbose = True  # 是否打印ffmpeg输出信息到控制台
 save_log = True  # 是否保存日志信息
 debug = False  # 是否显示并保存调试信息
-'''
+"""
 *------------以上为可配置项-------------*
-'''
+"""
 
 record_status = False  # 录制状态，True为录制中
 kill_times = 0  # 尝试强制结束FFmpeg的次数
@@ -108,7 +108,7 @@ def record():
         elif match('frame=[0-9]', line) or 'Opening' in line:
             last_record_time = get_timestamp()  # 获取最后录制的时间
         elif 'Failed to read handshake response' in line:
-            time.sleep('5')  # FFmpeg读取m3u8流失败，等个5s康康会不会恢复
+            time.sleep(5)  # FFmpeg读取m3u8流失败，等个5s康康会不会恢复
             continue
         time_diff = get_timestamp() - last_record_time  # 计算上次录制到目前的时间差
         if time_diff >= 65:
@@ -137,7 +137,8 @@ def main():
             logger.info('------------------------------')
             logger.info(f'正在检测直播间：{room_id}')
             try:
-                room_info = requests.get(f'https://api.live.bilibili.com/room/v1/Room/get_info?room_id={room_id}', timeout=5)
+                room_info = requests.get(f'https://api.live.bilibili.com/room/v1/Room/get_info?room_id={room_id}',
+                                         timeout=5)
             except (requests.exceptions.ReadTimeout, requests.exceptions.Timeout, requests.exceptions.ConnectTimeout):
                 logger.error(f'无法连接至B站API，等待{check_time}s后重新开始检测')
                 time.sleep(check_time)
@@ -162,7 +163,8 @@ def main():
             f'https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl?cid={room_id}&platform=h5&qn=10000')
         m3u8_address = loads(m3u8_list.text)['data']['durl'][0]['url']
         # 下面命令中的timeout单位为微秒，10000000us为10s（https://www.cnblogs.com/zhifa/p/12345376.html）
-        command = ['ffmpeg', '-rw_timeout', '10000000', '-timeout', '10000000', '-listen_timeout', '10000000', '-headers',
+        command = ['ffmpeg', '-rw_timeout', '10000000', '-timeout', '10000000', '-listen_timeout', '10000000',
+                   '-headers',
                    '"Accept: */*? Accept-Encoding: gzip, deflate, br? Accept-Language: zh,zh-TW;q=0.9,en-US;q=0.8,en;'
                    'q=0.7,zh-CN;q=0.6,ru;q=0.5? Origin: https://www.bilibili.com? '
                    'User-Agent: Mozilla/5.0 (Windows NT 10.0;Win64; x64) '
