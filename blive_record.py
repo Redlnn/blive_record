@@ -31,13 +31,13 @@ from regex import match
 """
 # room_id = 1151716  # 莴苣某人
 # room_id = 1857249  # Red_lnn
-room_id = 1151716  # 要录制的B站直播的直播ID
-segment_time = 1800  # 录播分段时长（单位：秒，大于等于1小时可能会造成FFmpeg退出录制）
+room_id = 1151716  # 要录制的B站直播间的直播间ID
+segment_time = 1800  # 录播分段时长（单位：秒，大于等于1小时可能会造成 FFmpeg 异常退出录制）
 check_time = 60  # 开播检测间隔（单位：秒）
 file_extensions = 'flv'  # 录制文件后缀名（文件格式）
 verbose = True  # 是否打印ffmpeg输出信息到控制台
-save_log = True  # 是否保存日志信息
-debug = False  # 是否显示并保存调试信息
+debug = False  # 是否显示并保存调试信息（优先级高于 verbose）
+save_log = True  # 是否保存日志信息为文件，同一天多次启动本脚本会共用同一个日志文件，每天凌晨分割一次日志文件
 """
 *------------以上为可配置项-------------*
 """
@@ -187,10 +187,14 @@ def main():
             while True:
                 if not record_status:
                     break
-                time.sleep(30)
+                if verbose or debug:
+                    time.sleep(20)
+                    logger.info(f'--==>>> 已录制 {round((get_timestamp() - start_time) / 60, 2)} 分钟 <<<==--')
+                else:
+                    time.sleep(60)
+                    logger.info(f'--==>>> 已录制 {int((get_timestamp() - start_time) / 60)} 分钟 <<<==--')
                 if not record_status:
                     break
-                logger.info(f'--==>>> 已录制 {round((get_timestamp() - start_time) / 60, 2)} 分钟 <<<==--')
         except KeyboardInterrupt:
             # p.send_signal(signal.CTRL_C_EVENT)
             logger.info('停止录制，等待ffmpeg退出后本程序会自动退出')
