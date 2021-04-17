@@ -166,12 +166,12 @@ def main():
         command = ['ffmpeg', '-rw_timeout', '10000000', '-timeout', '10000000', '-listen_timeout', '10000000',
                    '-headers',
                    '"Accept: */*? Accept-Encoding: gzip, deflate, br? Accept-Language: zh,zh-TW;q=0.9,en-US;q=0.8,en;'
-                   'q=0.7,zh-CN;q=0.6,ru;q=0.5? Origin: https://www.bilibili.com? '
+                   f'q=0.7,zh-CN;q=0.6,ru;q=0.5? Origin: https://live.bilibili.com/{room_id}? '
                    'User-Agent: Mozilla/5.0 (Windows NT 10.0;Win64; x64) '
                    'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.106 Safari/537.36?"', '-i',
-                   m3u8_address, '-c:v', 'copy', '-c:a', 'copy',
+                   m3u8_address, '-c:v', 'copy', '-c:a', 'copy', '-bsf:a', 'aac_adtstoasc',
                    '-f', 'segment', '-segment_time', str(segment_time), '-segment_start_number', '1',
-                   os.path.join('download', f'[Room_{room_id}] {get_time()}_part%03d.{file_extensions}'), '-y']
+                   os.path.join('download', f'[{room_id}]_{get_time()}_part%03d.{file_extensions}'), '-y']
         if debug:
             logger.debug('FFmpeg命令如下 ↓')
             command_str = ''
