@@ -121,19 +121,19 @@ def main():
         record_status = False
         while True:
             logger.info('------------------------------')
-            logger.info(f'正在检测直播间：{room_id}')
+            logger.info(f'正在检测直播间{room_id}是否开播')
             try:
                 room_info = requests.get(f'https://api.live.bilibili.com/room/v1/Room/get_info?room_id={room_id}',
                                          timeout=5)
             except (requests.exceptions.ReadTimeout, requests.exceptions.Timeout, requests.exceptions.ConnectTimeout):
-                logger.error(f'无法连接至B站API，等待{check_time}s后重新开始检测')
+                logger.error(f'无法连接至B站API，请检查网络连接，将在等待{check_time}s后重新开始检测')
                 time.sleep(check_time)
                 continue
             live_status = loads(room_info.text)['data']['live_status']
             if live_status == 1:
                 break
             elif live_status == 0:
-                logger.info(f'没有开播，等待{check_time}s重新开始检测')
+                logger.info(f'直播间{room_id}没有开播，将在等待{check_time}s后重新开始检测')
             time.sleep(check_time)
         if not os.path.exists(os.path.join('download')):
             try:
@@ -144,19 +144,17 @@ def main():
         if os.path.isfile(os.path.join('download')):
             logger.error('存在与下载文件夹同名的文件')
             sys.exit(1)
-        logger.info('正在直播，准备开始录制')
+        logger.info(f'直播间{room_id}正在直播，准备开始录制')
         m3u8_list = requests.get(
             f'https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl?cid={room_id}&platform=h5&qn=10000')
         m3u8_address = loads(m3u8_list.text)['data']['durl'][0]['url']  # noqa
-        # 下面命令中的timeout单位为微秒，10000000us为10s（https://www.cnblogs.com/zhifa/p/12345376.html）
-        command = ['ffmpeg', '-rw_timeout', '10000000', '-timeout', '10000000', '-listen_timeout', '10000000',
-                   '-headers',
-                   '"Accept: */*? Accept-Encoding: gzip, deflate, br? Accept-Language: zh,zh-TW;q=0.9,en-US;q=0.8,en;'
-                   f'q=0.7,zh-CN;q=0.6,ru;q=0.5? Origin: https://live.bilibili.com/{room_id}? '
-                   'User-Agent: Mozilla/5.0 (Windows NT 10.0;Win64; x64) '
-                   'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.106 Safari/537.36?"', '-i',
-                   m3u8_address, '-c:v', 'copy', '-c:a', 'copy', '-bsf:a', 'aac_adtstoasc',
-                   '-f', 'segment', '-segment_time', str(segment_time), '-segment_start_number', '1',
+        # 下面命令中的timeout单位为微秒，5000000us为5s（https://www.cnblogs.com/zhifa/p/12345376.html）
+        command = ['ffmpeg', '-rw_timeout', '5000000', '-timeout', '5000000', '-listen_timeout', '5000000',
+                   '-headers', '"Accept: */*? Accept-Encoding: gzip, deflate, br? Accept-Language: zh;q=0.9,zh-CN;'
+                   f'q=0.8,en-US;q=0.7,en;? Origin: https://live.bilibili.com/{room_id}? User-Agent: Mozilla/5.0 '
+                   '(Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 '
+                   'Safari/537.36"', '-i', m3u8_address, '-c', 'copy', '-bsf:a', 'aac_adtstoasc', '-f', 'segment',
+                   '-segment_time', str(segment_time), '-segment_start_number', '1',
                    os.path.join('download', f'[{room_id}]_{get_time()}_part%03d.{file_extensions}'), '-y']
         if debug:
             logger.debug('FFmpeg命令如下 ↓')
@@ -173,12 +171,16 @@ def main():
             while True:
                 if not record_status:
                     break
-                if verbose or debug:
+                record_length = time.gmtime(get_timestamp() - start_time)
+                if debug:
+                    time.sleep(5)
+                    logger.info(f'--==>>> 已录制 {time.strftime("%H:%M:%S", record_length)} <<<==--')  # 秒数不一定准
+                elif verbose:
                     time.sleep(20)
-                    logger.info(f'--==>>> 已录制 {round((get_timestamp() - start_time) / 60, 1)} 分钟 <<<==--')
+                    logger.info(f'--==>>> 已录制 {time.strftime("%H:%M:%S", record_length)} <<<==--')  # 秒数不一定准
                 else:
                     time.sleep(60)
-                    logger.info(f'--==>>> 已录制 {int((get_timestamp() - start_time) / 60)} 分钟 <<<==--')
+                    logger.info(f'--==>>> 已录制 {time.strftime("%H:%M", record_length)} <<<==--')
                 if not record_status:
                     break
         except KeyboardInterrupt:
