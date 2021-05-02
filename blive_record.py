@@ -11,7 +11,6 @@
 *--------------------------------------*
 """
 
-# import ffmpy3  # noqa
 import logging
 import os
 import signal
@@ -27,7 +26,7 @@ import requests
 from regex import match
 
 # 导入配置
-from config import *   # noqa
+from config import (room_id, segment_time, check_time, file_extensions, verbose, debug, save_log)  # noqa
 
 record_status = False  # 录制状态，True为录制中
 kill_times = 0  # 尝试强制结束FFmpeg的次数
@@ -36,9 +35,9 @@ logging.addLevelName(15, 'FFmpeg')  # 自定义FFmpeg的日志级别
 logger = logging.getLogger('Record')
 logger.setLevel(logging.DEBUG)
 
-fms = '[%(asctime)s %(levelname)s] %(message)s'
-# datefmt = "%Y-%m-%d %H:%M:%S"
-datefmt = "%H:%M:%S"
+fms = '[%(asctime)s %(levelname)s] %(message)s'  # noqa
+# date_format = "%Y-%m-%d %H:%M:%S"
+date_format = "%H:%M:%S"
 
 default_handler = logging.StreamHandler(sys.stdout)
 if debug:
@@ -47,7 +46,7 @@ elif verbose:
     default_handler.setLevel(15)
 else:
     default_handler.setLevel(logging.INFO)
-default_handler.setFormatter(logging.Formatter(fms, datefmt=datefmt))
+default_handler.setFormatter(logging.Formatter(fms, datefmt=date_format))
 logger.addHandler(default_handler)
 
 if save_log:
@@ -59,7 +58,7 @@ if save_log:
         default_handler.setLevel(logging.DEBUG)
     else:
         default_handler.setLevel(15)
-    file_handler.setFormatter(logging.Formatter(fms, datefmt=datefmt))
+    file_handler.setFormatter(logging.Formatter(fms, datefmt=date_format))
     logger.addHandler(file_handler)
 
 
@@ -148,7 +147,7 @@ def main():
         logger.info('正在直播，准备开始录制')
         m3u8_list = requests.get(
             f'https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl?cid={room_id}&platform=h5&qn=10000')
-        m3u8_address = loads(m3u8_list.text)['data']['durl'][0]['url']
+        m3u8_address = loads(m3u8_list.text)['data']['durl'][0]['url']  # noqa
         # 下面命令中的timeout单位为微秒，10000000us为10s（https://www.cnblogs.com/zhifa/p/12345376.html）
         command = ['ffmpeg', '-rw_timeout', '10000000', '-timeout', '10000000', '-listen_timeout', '10000000',
                    '-headers',
@@ -176,7 +175,7 @@ def main():
                     break
                 if verbose or debug:
                     time.sleep(20)
-                    logger.info(f'--==>>> 已录制 {round((get_timestamp() - start_time) / 60, 2)} 分钟 <<<==--')
+                    logger.info(f'--==>>> 已录制 {round((get_timestamp() - start_time) / 60, 1)} 分钟 <<<==--')
                 else:
                     time.sleep(60)
                     logger.info(f'--==>>> 已录制 {int((get_timestamp() - start_time) / 60)} 分钟 <<<==--')
