@@ -2,13 +2,14 @@
 # -*- coding:utf-8 -*-
 
 """
-*--------------------------------------*
- B站直播录播姬 By: Red_lnn
- 仅支持单个主播，多个主播请复制多份并分开单独启动
- 运行时如要停止录制并退出，请按键盘 Ctrl+C
- 如要修改录制设置，请以纯文本方式打开.py文件
- 利用ffmpeg直接抓取主播推送的流，不需要打开浏览器
-*--------------------------------------*
+*---------------------------------------------------------------*
+ * B站直播录播姬 By: Red_lnn
+ * 项目地址: https://github.com/Redlnn/blive_record
+ * 仅支持单个主播，多个主播请复制多份实例并分开单独启动
+ * 运行时如要停止录制并退出，请按键盘 Ctrl-C
+ * 如要修改录制设置，请以纯文本方式打开 "config.py" 文件
+ * 利用 FFmpeg 直接抓取主播推送的音视频流，无需打开浏览器，CPU与GPU占用率非常低
+*---------------------------------------------------------------*
 """
 
 import logging
@@ -35,7 +36,7 @@ logging.addLevelName(15, 'FFmpeg')  # 自定义FFmpeg的日志级别
 logger = logging.getLogger('Record')
 logger.setLevel(logging.DEBUG)
 
-fms = '[%(asctime)s %(levelname)s] %(message)s'  # noqa
+fms = "[%(asctime)s %(levelname)s] %(message)s"
 # date_format = "%Y-%m-%d %H:%M:%S"
 date_format = "%H:%M:%S"
 
@@ -50,7 +51,6 @@ default_handler.setFormatter(logging.Formatter(fms, datefmt=date_format))
 logger.addHandler(default_handler)
 
 if save_log:
-    # file_handler = logging.FileHandler("debug.log", mode='w+', encoding='utf-8')
     if not os.path.exists(os.path.join('logs')):
         os.mkdir(os.path.join('logs'))
     file_handler = handlers.TimedRotatingFileHandler(os.path.join('logs', 'debug.log'), 'midnight', encoding='utf-8')
