@@ -177,16 +177,14 @@ def main():
             while True:
                 if not record_status:
                     break
-                record_length = time.gmtime(get_timestamp() - start_time)
                 if debug:
                     time.sleep(5)
-                    logger.info(f'--==>>> 已录制 {time.strftime("%H:%M:%S", record_length)} <<<==--')  # 秒数不一定准
                 elif verbose:
                     time.sleep(20)
-                    logger.info(f'--==>>> 已录制 {time.strftime("%H:%M:%S", record_length)} <<<==--')  # 秒数不一定准
                 else:
                     time.sleep(40)
-                    logger.info(f'--==>>> 已录制 {time.strftime("%H:%M:%S", record_length)} <<<==--')  # 秒数不一定准
+                record_length = time.gmtime(get_timestamp() - start_time)
+                logger.info(f'--==>>> 已录制 {time.strftime("%H:%M:%S", record_length)} <<<==--')  # 秒数不一定准
                 if not record_status:
                     break
         except KeyboardInterrupt:
