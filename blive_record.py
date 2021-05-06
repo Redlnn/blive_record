@@ -154,12 +154,12 @@ def main():
         if debug:
             command = ['ffmpeg', '-loglevel', 'repeat+level+debug']
         else:
-            command = ['ffmpeg', '-loglevel', 'repeat+level+info']
+            command = ['ffmpeg', '-loglevel', '+level+info']
         command += ['-rw_timeout', '5000000', '-timeout', '5000000', '-listen_timeout', '5000000',
                     '-headers', '"Accept: */*? Accept-Encoding: gzip, deflate, br? Accept-Language: zh;q=0.9,zh-CN;'
                     f'q=0.8,en-US;q=0.7,en;? Origin: https://live.bilibili.com/{room_id}? User-Agent: Mozilla/5.0 '
                     '(Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 '
-                    'Safari/537.36"', '-i', m3u8_address, '-c', 'copy', '-bsf:a', 'aac_adtstoasc', '-f', 'segment',
+                    'Safari/537.36"\r\n', '-i', m3u8_address, '-c', 'copy', '-bsf:a', 'aac_adtstoasc', '-f', 'segment',
                     '-segment_time', str(segment_time), '-strftime', '1',
                     os.path.join('download', f'{room_id}_%Y%m%d_%H%M%S.{file_extensions}'), '-y']
         if debug:
