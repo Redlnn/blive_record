@@ -30,9 +30,9 @@ from regex import match
 from config import (room_id, segment_time, check_time, file_extensions, verbose, debug, save_log)  # noqa
 
 # 提前定义要用到的变量
-last_record_time = 0
-last_stop_time = 0
-kill_times = 0  # 尝试强制结束FFmpeg的次数
+last_record_time = 0   # 上次录制成功的时间
+last_stop_time = 0     # 上次停止录制的时间
+kill_times = 0         # 尝试强制结束FFmpeg的次数
 record_status = False  # 录制状态，True为录制中
 
 logging.addLevelName(19, 'FFmpeg')  # 自定义FFmpeg的日志级别
@@ -43,6 +43,7 @@ fms = "[%(asctime)s %(levelname)s] %(message)s"
 # date_format = "%Y-%m-%d %H:%M:%S"
 date_format = "%H:%M:%S"
 
+# 设置控制台log输出
 default_handler = logging.StreamHandler(sys.stdout)
 if debug:
     default_handler.setLevel(logging.DEBUG)
@@ -53,6 +54,7 @@ else:
 default_handler.setFormatter(logging.Formatter(fms, datefmt=date_format))
 logger.addHandler(default_handler)
 
+# 设置log文件输出
 if save_log:
     if not os.path.exists(os.path.join('logs')):
         os.mkdir(os.path.join('logs'))
@@ -60,7 +62,7 @@ if save_log:
     if debug:
         default_handler.setLevel(logging.DEBUG)
     else:
-        default_handler.setLevel(19)
+        default_handler.setLevel(19)  # 不管verbose是否设置为True，都保存FFmpge的info级别的日志到log文件中
     file_handler.setFormatter(logging.Formatter(fms, datefmt=date_format))
     logger.addHandler(file_handler)
 
