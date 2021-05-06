@@ -75,7 +75,7 @@ def get_timestamp() -> int:
     return int(time.time())
 
 
-def record():
+def record_control():
     """
     录制过程中要执行的检测与判断
     """
@@ -113,6 +113,21 @@ def record():
             last_stop_time = get_timestamp()  # 获取录制结束的时间
             record_status = False
             break
+
+
+def time_countdown(sec: int):
+    """
+    倒数计时+录制状态判断
+
+    :param sec: 要倒数的时长（秒）
+    """
+    global record_status
+    _ = 0
+    while _ <= sec:
+        if not record_status:
+            break
+        time.sleep(1)
+        _ += 1
 
 
 def main():
@@ -186,21 +201,24 @@ def main():
         record_status = True
         start_time = last_record_time = get_timestamp()
         try:
-            t = threading.Thread(target=record)
-            t.start()
+            record_control_thread = threading.Thread(target=record_control)
+            record_control_thread.setDaemon(True)
+            record_control_thread.start()
             while True:
+                if debug:
+                    time_countdown_thread = threading.Thread(target=time_countdown, args=[5])
+                elif verbose:
+                    time_countdown_thread = threading.Thread(target=time_countdown, args=[20])
+                else:
+                    time_countdown_thread = threading.Thread(target=time_countdown, args=[40])
+                time_countdown_thread.setDaemon(True)
+                time_countdown_thread.start()
+                time_countdown_thread.join()
                 if not record_status:
                     break
-                if debug:
-                    time.sleep(5)
-                elif verbose:
-                    time.sleep(20)
-                else:
-                    time.sleep(40)
                 record_length = time.gmtime(get_timestamp() - start_time)
                 logger.info(f'--==>>> 已录制 {time.strftime("%H:%M:%S", record_length)} <<<==--')  # 秒数不一定准
-                if not record_status:
-                    break
+            record_control_thread.join()
         except KeyboardInterrupt:
             # p.send_signal(signal.CTRL_C_EVENT)
             logger.info('停止录制，等待ffmpeg退出后本程序会自动退出')
