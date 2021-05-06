@@ -78,7 +78,7 @@ def record():
     """
     录制过程中要执行的检测与判断
     """
-    global p, record_status, last_record_time, last_stop_time kill_times  # noqa
+    global p, record_status, last_record_time, last_stop_time, kill_times  # noqa
     while True:
         line = p.stdout.readline().decode()
         p.stdout.flush()
@@ -114,7 +114,7 @@ def record():
 
 
 def main():
-    global p, room_id, record_status, last_record_time, last_stop_time， kill_times  # noqa
+    global p, room_id, record_status, last_record_time, last_stop_time, kill_times  # noqa
     while True:
         record_status = False
         while True:
