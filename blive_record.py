@@ -105,6 +105,7 @@ def record():
         if 'Immediate exit requested' in line:
             logger.info('FFmpeg已被强制结束')
             last_stop_time = get_timestamp()  # 获取录制结束的时间
+            record_status = False
             break
         if p.poll() is not None:  # 如果FFmpeg已退出但没有被上一个判断和本循环第一个判断捕捉到，则当作异常退出
             logger.error('ffmpeg未正常退出，请检查日志文件！')
