@@ -29,8 +29,11 @@ from regex import match
 # 导入配置
 from config import (room_id, segment_time, check_time, file_extensions, verbose, debug, save_log)  # noqa
 
-record_status = False  # 录制状态，True为录制中
+# 提前定义要用到的变量
+last_record_time = 0
+last_stop_time = 0
 kill_times = 0  # 尝试强制结束FFmpeg的次数
+record_status = False  # 录制状态，True为录制中
 
 logging.addLevelName(15, 'FFmpeg')  # 自定义FFmpeg的日志级别
 logger = logging.getLogger('Record')
@@ -73,12 +76,13 @@ def record():
     """
     录制过程中要执行的检测与判断
     """
-    global p, record_status, last_record_time, kill_times  # noqa
+    global p, record_status, last_record_time, last_stop_time kill_times  # noqa
     while True:
         line = p.stdout.readline().decode()
         p.stdout.flush()
         logger.log(15, line.rstrip())
         if match('video:[0-9kmgB]* audio:[0-9kmgB]* subtitle:[0-9kmgB]*', line) or 'Exiting normally' in line:
+            last_stop_time = get_timestamp()  # 获取录制结束的时间
             record_status = False  # 如果FFmpeg正常结束录制则退出本循环
             break
         elif match('frame=[0-9]', line) or 'Opening' in line:
@@ -98,15 +102,17 @@ def record():
                 sys.exit(1)
         if 'Immediate exit requested' in line:
             logger.info('FFmpeg已被强制结束')
+            last_stop_time = get_timestamp()  # 获取录制结束的时间
             break
         if p.poll() is not None:  # 如果FFmpeg已退出但没有被上一个判断和本循环第一个判断捕捉到，则当作异常退出
             logger.error('ffmpeg未正常退出，请检查日志文件！')
+            last_stop_time = get_timestamp()  # 获取录制结束的时间
             record_status = False
             break
 
 
 def main():
-    global p, room_id, record_status, last_record_time, kill_times  # noqa
+    global p, room_id, record_status, last_record_time, last_stop_time， kill_times  # noqa
     while True:
         record_status = False
         while True:
@@ -135,6 +141,10 @@ def main():
             logger.error('存在与下载文件夹同名的文件')
             sys.exit(1)
         logger.info(f'直播间{room_id}正在直播，准备开始录制')
+        # 如果上次录制停止到本次开始录制的时间差小于30s，则认为上次录制时FFmpeg可能异常断开或停止
+        if 0 < last_stop_time - get_timestamp() < 30:
+            logger.warning('***检测到上次录制时FFmpeg可能异常断开或停止，请检查录制文件是否存在问题***')
+            last_stop_time = 0
         m3u8_list = requests.get(
             f'https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl?cid={room_id}&platform=h5&qn=10000')
         m3u8_address = loads(m3u8_list.text)['data']['durl'][0]['url']  # noqa
