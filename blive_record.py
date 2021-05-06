@@ -185,8 +185,8 @@ def main():
                     time.sleep(20)
                     logger.info(f'--==>>> 已录制 {time.strftime("%H:%M:%S", record_length)} <<<==--')  # 秒数不一定准
                 else:
-                    time.sleep(60)
-                    logger.info(f'--==>>> 已录制 {time.strftime("%H:%M", record_length)} <<<==--')
+                    time.sleep(40)
+                    logger.info(f'--==>>> 已录制 {time.strftime("%H:%M:%S", record_length)} <<<==--')  # 秒数不一定准
                 if not record_status:
                     break
         except KeyboardInterrupt:
