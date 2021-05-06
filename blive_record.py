@@ -69,16 +69,6 @@ def get_timestamp() -> int:
     return int(time.time())
 
 
-def get_time() -> str:
-    """
-    获取格式化后的时间
-    """
-    time_now = get_timestamp()
-    time_local = time.localtime(time_now)
-    dt = time.strftime("%Y%m%d_%H%M%S", time_local)
-    return dt
-
-
 def record():
     """
     录制过程中要执行的检测与判断
@@ -154,8 +144,8 @@ def main():
                    f'q=0.8,en-US;q=0.7,en;? Origin: https://live.bilibili.com/{room_id}? User-Agent: Mozilla/5.0 '
                    '(Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 '
                    'Safari/537.36"', '-i', m3u8_address, '-c', 'copy', '-bsf:a', 'aac_adtstoasc', '-f', 'segment',
-                   '-segment_time', str(segment_time), '-segment_start_number', '1',
-                   os.path.join('download', f'[{room_id}]_{get_time()}_part%03d.{file_extensions}'), '-y']
+                   '-segment_time', str(segment_time), '-strftime', '1',
+                   os.path.join('download', f'{room_id}_%Y%m%d_%H%M%S.{file_extensions}'), '-y']
         if debug:
             logger.debug('FFmpeg命令如下 ↓')
             command_str = ''
