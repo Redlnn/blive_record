@@ -35,7 +35,7 @@ last_stop_time = 0
 kill_times = 0  # 尝试强制结束FFmpeg的次数
 record_status = False  # 录制状态，True为录制中
 
-logging.addLevelName(15, 'FFmpeg')  # 自定义FFmpeg的日志级别
+logging.addLevelName(19, 'FFmpeg')  # 自定义FFmpeg的日志级别
 logger = logging.getLogger('Record')
 logger.setLevel(logging.DEBUG)
 
@@ -47,7 +47,7 @@ default_handler = logging.StreamHandler(sys.stdout)
 if debug:
     default_handler.setLevel(logging.DEBUG)
 elif verbose:
-    default_handler.setLevel(15)
+    default_handler.setLevel(19)
 else:
     default_handler.setLevel(logging.INFO)
 default_handler.setFormatter(logging.Formatter(fms, datefmt=date_format))
@@ -60,7 +60,7 @@ if save_log:
     if debug:
         default_handler.setLevel(logging.DEBUG)
     else:
-        default_handler.setLevel(15)
+        default_handler.setLevel(19)
     file_handler.setFormatter(logging.Formatter(fms, datefmt=date_format))
     logger.addHandler(file_handler)
 
@@ -149,13 +149,17 @@ def main():
             f'https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl?cid={room_id}&platform=h5&qn=10000')
         m3u8_address = loads(m3u8_list.text)['data']['durl'][0]['url']  # noqa
         # 下面命令中的timeout单位为微秒，5000000us为5s（https://www.cnblogs.com/zhifa/p/12345376.html）
-        command = ['ffmpeg', '-rw_timeout', '5000000', '-timeout', '5000000', '-listen_timeout', '5000000',
-                   '-headers', '"Accept: */*? Accept-Encoding: gzip, deflate, br? Accept-Language: zh;q=0.9,zh-CN;'
-                   f'q=0.8,en-US;q=0.7,en;? Origin: https://live.bilibili.com/{room_id}? User-Agent: Mozilla/5.0 '
-                   '(Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 '
-                   'Safari/537.36"', '-i', m3u8_address, '-c', 'copy', '-bsf:a', 'aac_adtstoasc', '-f', 'segment',
-                   '-segment_time', str(segment_time), '-strftime', '1',
-                   os.path.join('download', f'{room_id}_%Y%m%d_%H%M%S.{file_extensions}'), '-y']
+        if debug:
+            command = ['ffmpeg', '-loglevel', 'repeat+level+debug']
+        else:
+            command = ['ffmpeg', '-loglevel', 'repeat+level+info']
+        command += ['-rw_timeout', '5000000', '-timeout', '5000000', '-listen_timeout', '5000000',
+                    '-headers', '"Accept: */*? Accept-Encoding: gzip, deflate, br? Accept-Language: zh;q=0.9,zh-CN;'
+                    f'q=0.8,en-US;q=0.7,en;? Origin: https://live.bilibili.com/{room_id}? User-Agent: Mozilla/5.0 '
+                    '(Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 '
+                    'Safari/537.36"', '-i', m3u8_address, '-c', 'copy', '-bsf:a', 'aac_adtstoasc', '-f', 'segment',
+                    '-segment_time', str(segment_time), '-strftime', '1',
+                    os.path.join('download', f'{room_id}_%Y%m%d_%H%M%S.{file_extensions}'), '-y']
         if debug:
             logger.debug('FFmpeg命令如下 ↓')
             command_str = ''
