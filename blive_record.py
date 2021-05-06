@@ -19,6 +19,7 @@ import sys
 import threading
 import time
 import traceback
+import urllib3
 from json import loads
 from logging import handlers
 from subprocess import PIPE, Popen, STDOUT
@@ -123,8 +124,12 @@ def main():
             logger.info(f'正在检测直播间{room_id}是否开播')
             try:
                 room_info = requests.get(f'https://api.live.bilibili.com/room/v1/Room/get_info?room_id={room_id}',
-                                         timeout=5)
+                                         timeout=(5, 5))
             except (requests.exceptions.ReadTimeout, requests.exceptions.Timeout, requests.exceptions.ConnectTimeout):
+                logger.error(f'尝试连接至B站API时网络超时，请检查网络连接，将在等待{check_time}s后重新开始检测')
+                time.sleep(check_time)
+                continue
+            except (urllib3.exceptions.NewConnectionError, urllib3.exceptions.MaxRetryError, requests.exceptions.ConnectionError):
                 logger.error(f'无法连接至B站API，请检查网络连接，将在等待{check_time}s后重新开始检测')
                 time.sleep(check_time)
                 continue
@@ -148,8 +153,16 @@ def main():
         if 0 < last_stop_time - get_timestamp() < 30:
             logger.warning('***检测到上次录制时FFmpeg可能异常断开或停止，请检查录制文件是否存在问题***')
             last_stop_time = 0
-        m3u8_list = requests.get(
-            f'https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl?cid={room_id}&platform=h5&qn=10000')
+        try:
+            m3u8_list = requests.get(f'https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl?cid={room_id}&platform=h5&qn=10000', timeout=(5, 5))
+        except (requests.exceptions.ReadTimeout, requests.exceptions.Timeout, requests.exceptions.ConnectTimeout):
+            logger.error(f'从B站API获取直播媒体流链接时网络超时，请检查网络连接，将在等待{check_time}s后重新开始检测')
+            time.sleep(check_time)
+            continue
+        except (urllib3.exceptions.NewConnectionError, urllib3.exceptions.MaxRetryError, requests.exceptions.ConnectionError):
+            logger.error(f'无法连接至B站API获取直播媒体流链接，请检查网络连接，将在等待{check_time}s后重新开始检测')
+            time.sleep(check_time)
+            continue
         m3u8_address = loads(m3u8_list.text)['data']['durl'][0]['url']  # noqa
         # 下面命令中的timeout单位为微秒，5000000us为5s（https://www.cnblogs.com/zhifa/p/12345376.html）
         if debug:
