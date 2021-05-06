@@ -35,7 +35,7 @@ last_stop_time = 0     # 上次停止录制的时间
 kill_times = 0         # 尝试强制结束FFmpeg的次数
 record_status = False  # 录制状态，True为录制中
 
-logging.addLevelName(19, 'FFmpeg')  # 自定义FFmpeg的日志级别
+logging.addLevelName(15, 'FFmpeg')  # 自定义FFmpeg的日志级别
 logger = logging.getLogger('Record')
 logger.setLevel(logging.DEBUG)
 
@@ -48,7 +48,7 @@ default_handler = logging.StreamHandler(sys.stdout)
 if debug:
     default_handler.setLevel(logging.DEBUG)
 elif verbose:
-    default_handler.setLevel(19)
+    default_handler.setLevel(15)
 else:
     default_handler.setLevel(logging.INFO)
 default_handler.setFormatter(logging.Formatter(fms, datefmt=date_format))
@@ -62,7 +62,7 @@ if save_log:
     if debug:
         default_handler.setLevel(logging.DEBUG)
     else:
-        default_handler.setLevel(19)  # 不管verbose是否设置为True，都保存FFmpge的info级别的日志到log文件中
+        default_handler.setLevel(15)  # 不管verbose是否设置为True，都保存FFmpge的info级别的日志到log文件中
     file_handler.setFormatter(logging.Formatter(fms, datefmt=date_format))
     logger.addHandler(file_handler)
 
