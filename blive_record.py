@@ -40,7 +40,10 @@ logging.addLevelName(15, 'FFmpeg')  # 自定义FFmpeg的日志级别
 logger = logging.getLogger('Record')
 logger.setLevel(logging.DEBUG)
 
-fms = "[%(asctime)s %(levelname)s] %(message)s"
+if debug:
+    fms = "[%(asctime)s.%(msecs)03d %(levelname)s] %(message)s"
+else:
+    fms = "[%(asctime)s %(levelname)s] %(message)s"
 # date_format = "%Y-%m-%d %H:%M:%S"
 date_format = "%H:%M:%S"
 
