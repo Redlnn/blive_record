@@ -8,9 +8,9 @@
 - 有新功能需求请直接提 `Pull requests`，提`issue`可能会被无视
 - 建议使用 `flv` 格式进行录制（默认），以防止意外中断导致录制文件损坏，若要进行剪辑可使用 FFmpeg 转换为 mp4 文件后再倒入到剪辑软件  
 ```
-使用 FFmpeg 转换 flv 为 mp4:
+使用 FFmpeg 转换 flv 为 mp4 (以下方式均不涉及转码，仅是换一种封装格式):
 1. 直接使用命令进行转换: "ffmpeg -i {input}.flv -c copy {output}.mp4"
-2. Windows系统下可双击 "flv2mp4.bat" 可将 "download" 目录下的flv文件转换为mp4文件并放在 "convert" 文件夹中
+2. Windows系统下运行 "flv2mp4.bat" 可直接将 "download" 目录下的所有flv文件（不会遍历子目录）转换为mp4文件并放在 "convert" 文件夹中
 ```
 
 ## 使用方式
