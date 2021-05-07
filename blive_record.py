@@ -250,6 +250,7 @@ def main():
             logger.info('Bye!')
             sys.exit(0)
         if exit_in_seconds:
+            exit_in_seconds = False
             logger.warning(f'因FFmpeg在短时间内非正常退出，为防止反复刷屏，将在等待{check_time}s后重新开始检测直播间')
             time.sleep(check_time)
         else:
