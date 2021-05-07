@@ -35,6 +35,7 @@ last_record_time = 0   # 上次录制成功的时间
 last_stop_time = 0     # 上次停止录制的时间
 kill_times = 0         # 尝试强制结束FFmpeg的次数
 record_status = False  # 录制状态，True为录制中
+is_abort = False
 
 logging.addLevelName(15, 'FFmpeg')  # 自定义FFmpeg的日志级别
 logger = logging.getLogger('Record')
@@ -82,7 +83,7 @@ def record_control():
     """
     录制过程中要执行的检测与判断
     """
-    global p, record_status, last_record_time, last_stop_time, kill_times  # noqa
+    global p, record_status, last_record_time, last_stop_time, kill_times, is_abort  # noqa
     while True:
         line = p.stdout.readline().decode()
         p.stdout.flush()
@@ -98,7 +99,7 @@ def record_control():
             continue
         time_diff = get_timestamp() - last_record_time  # 计算上次录制到目前的时间差
         if time_diff >= 65:
-            logger.error('最后一次录制到目前已超65s，将尝试发送终止信号')
+            logger.warning('最后一次录制到目前已超65s，将尝试发送终止信号')
             logger.debug(f'间隔时间：{time_diff}s')
             kill_times += 1
             p.send_signal(signal.SIGTERM)  # 若最后一次录制到目前已超过65s，则认为FFmpeg卡死，尝试发送终止信号
@@ -107,14 +108,15 @@ def record_control():
                 logger.critical('由于无法结束FFmpeg进程，将尝试自我了结')
                 sys.exit(1)
         if 'Immediate exit requested' in line:
-            logger.info('FFmpeg已被强制结束')
+            logger.warning('FFmpeg已被强制结束')
             last_stop_time = get_timestamp()  # 获取录制结束的时间
             record_status = False
             break
         if p.poll() is not None:  # 如果FFmpeg已退出但没有被上一个判断和本循环第一个判断捕捉到，则当作异常退出
-            logger.error('ffmpeg未正常退出，请检查日志文件！')
+            logger.warning('ffmpeg未正常退出，请检查日志文件！')
             last_stop_time = get_timestamp()  # 获取录制结束的时间
             record_status = False
+            is_abort = True
             break
 
 
@@ -128,7 +130,7 @@ def time_countdown(sec: int):
 
 
 def main():
-    global p, room_id, record_status, last_record_time, last_stop_time, kill_times  # noqa
+    global p, room_id, record_status, last_record_time, last_stop_time, kill_times, is_abort  # noqa
     while True:
         record_status = False
         while True:
@@ -231,7 +233,11 @@ def main():
             logger.info('Bye!')
             sys.exit(0)
         kill_times = 0
-        logger.info('FFmpeg已退出，重新开始检测直播间')
+        if is_abort:
+            logger.warning(f'因FFmpeg未正常退出，为了防止反复重试刷屏，将在等待{check_time}s后重新开始检测直播间')
+            time.sleep(check_time)
+        else:
+            logger.info('FFmpeg已退出，重新开始检测直播间')
         # time.sleep(check_time)
 
 
