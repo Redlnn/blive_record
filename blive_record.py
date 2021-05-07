@@ -123,12 +123,18 @@ def record_control():
             last_stop_time = get_timestamp()  # 获取录制结束的时间
             record_status = False
             break
-        if p.poll() is not None:  # 如果FFmpeg已退出但没有被上面的if捕捉到，则当作异常退出
+        exit_code = p.poll()
+        if exit_code is not None and exit_code != 0:  # 如果FFmpeg已退出但没有被上面的if捕捉到，则当作异常退出
             logger.warning('FFmpeg未正常退出，请检查日志与录像文件！')
             last_stop_time = get_timestamp()  # 获取录制结束的时间
             record_status = False
             if (last_stop_time - start_time) <= 10:
                 exit_in_seconds = True
+            p.wait()
+            break
+        elif exit_code == 0:  # FFmpeg正常退出
+            last_stop_time = get_timestamp()  # 获取录制结束的时间
+            record_status = False  # 如果FFmpeg正常结束录制则退出本循环
             p.wait()
             break
 
