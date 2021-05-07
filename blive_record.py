@@ -235,18 +235,18 @@ def main():
                         break
                     if record_status and not time_countdown_thread.is_alive():
                         break
-                    time.sleep(1)  # 暴力解决CPU占用高的问题
-                # time_countdown_thread.join()
+                    time.sleep(1)  # 暴力解决CPU占用高的问题，也许时间短一点也行，不过没必要这么短
                 if not record_status:
                     break
                 record_length = time.gmtime(get_timestamp() - start_time)
                 logger.info(f'--==>>> 已录制 {time.strftime("%H:%M:%S", record_length)} <<<==--')  # 秒数不一定准
             record_control_thread.join()
         except KeyboardInterrupt:
-            # p.send_signal(signal.CTRL_C_EVENT)
-            logger.info('正在停止录制，等待ffmpeg退出后本程序会自动退出')
-            logger.info('若长时间卡住，请再次按下ctrl+c (可能会损坏视频文件)')
-            p.wait()
+            # p.send_signal(signal.CTRL_C_EVENT)  # 貌似FFmpeg可以检测到控制台中按下的ctrl-c，因此注释掉
+            logger.info('正在停止录制，等待ffmpeg退出...')
+            logger.info('若长时间卡住，请再次按下ctrl-c (可能会损坏视频文件)')
+            p.wait()  # 等待FFmpeg退出
+            logger.info('FFmpeg已退出，程序即将退出')
             logger.info('Bye!')
             sys.exit(0)
         if exit_in_seconds:
