@@ -249,7 +249,6 @@ if __name__ == '__main__':
     logger.info('如要停止录制并退出，请按键盘 Ctrl+C')
     logger.info('如要修改录制设置，请以纯文本方式打开.py文件')
     logger.info('准备开始录制...')
-    time.sleep(0.3)
     try:
         main()
     except KeyboardInterrupt:
