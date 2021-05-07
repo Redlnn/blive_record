@@ -121,13 +121,7 @@ def time_countdown(sec: int):
 
     :param sec: 要倒数的时长（秒）
     """
-    global record_status
-    _ = 0
-    while _ <= sec:
-        if not record_status:
-            break
-        time.sleep(1)
-        _ += 1
+    time.sleep(sec)
 
 
 def main():
@@ -213,7 +207,12 @@ def main():
                     time_countdown_thread = threading.Thread(target=time_countdown, args=[40])
                 time_countdown_thread.setDaemon(True)
                 time_countdown_thread.start()
-                time_countdown_thread.join()
+                while True:
+                    if not record_status:
+                        break
+                    if record_status and not time_countdown_thread.is_alive():
+                        break
+                # time_countdown_thread.join()
                 if not record_status:
                     break
                 record_length = time.gmtime(get_timestamp() - start_time)
