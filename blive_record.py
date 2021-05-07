@@ -235,6 +235,7 @@ def main():
                         break
                     if record_status and not time_countdown_thread.is_alive():
                         break
+                    time.sleep(1)  # 暴力解决CPU占用高的问题
                 # time_countdown_thread.join()
                 if not record_status:
                     break
