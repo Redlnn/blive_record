@@ -19,21 +19,21 @@ import sys
 import threading
 import time
 import traceback
-import urllib3
 from json import loads
 from logging import handlers
 from subprocess import PIPE, Popen, STDOUT
 
 import requests
+import urllib3
 from regex import match
 
 # 导入配置
-from config import (room_id, segment_time, check_time, file_extensions, verbose, debug, save_log)  # noqa
+from config import (check_time, debug, file_extensions, room_id, save_log, segment_time, verbose)  # noqa
 
 # 提前定义要用到的变量
-last_record_time = 0   # 上次录制成功的时间
-last_stop_time = 0     # 上次停止录制的时间
-kill_times = 0         # 尝试强制结束FFmpeg的次数
+last_record_time = 0  # 上次录制成功的时间
+last_stop_time = 0  # 上次停止录制的时间
+kill_times = 0  # 尝试强制结束FFmpeg的次数
 record_status = False  # 录制状态，True为录制中
 is_abort = False
 
@@ -143,7 +143,8 @@ def main():
                 logger.error(f'尝试连接至B站API时网络超时，请检查网络连接，将在等待{check_time}s后重新开始检测')
                 time.sleep(check_time)
                 continue
-            except (urllib3.exceptions.NewConnectionError, urllib3.exceptions.MaxRetryError, requests.exceptions.ConnectionError):
+            except (urllib3.exceptions.NewConnectionError, urllib3.exceptions.MaxRetryError,
+                    requests.exceptions.ConnectionError):
                 logger.error(f'无法连接至B站API，请检查网络连接，将在等待{check_time}s后重新开始检测')
                 time.sleep(check_time)
                 continue
@@ -168,12 +169,15 @@ def main():
             logger.warning('***检测到上次录制时FFmpeg可能异常断开或停止，请检查录制文件是否存在问题***')
             last_stop_time = 0
         try:
-            m3u8_list = requests.get(f'https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl?cid={room_id}&platform=h5&qn=10000', timeout=(5, 5))
+            m3u8_list = requests.get(
+                    f'https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl?cid={room_id}&platform=h5&qn=10000',
+                    timeout=(5, 5))
         except (requests.exceptions.ReadTimeout, requests.exceptions.Timeout, requests.exceptions.ConnectTimeout):
             logger.error(f'从B站API获取直播媒体流链接时网络超时，请检查网络连接，将在等待{check_time}s后重新开始检测')
             time.sleep(check_time)
             continue
-        except (urllib3.exceptions.NewConnectionError, urllib3.exceptions.MaxRetryError, requests.exceptions.ConnectionError):
+        except (urllib3.exceptions.NewConnectionError, urllib3.exceptions.MaxRetryError,
+                requests.exceptions.ConnectionError):
             logger.error(f'无法连接至B站API获取直播媒体流链接，请检查网络连接，将在等待{check_time}s后重新开始检测')
             time.sleep(check_time)
             continue
@@ -185,9 +189,10 @@ def main():
             command = ['ffmpeg', '-loglevel', '+level+info']
         command += ['-rw_timeout', '5000000', '-timeout', '5000000', '-listen_timeout', '5000000',
                     '-headers', '"Accept: */*? Accept-Encoding: gzip, deflate, br? Accept-Language: zh;q=0.9,zh-CN;'
-                    f'q=0.8,en-US;q=0.7,en;? Origin: https://live.bilibili.com/{room_id}? User-Agent: Mozilla/5.0 '
-                    '(Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 '
-                    'Safari/537.36"\r\n', '-i', m3u8_address, '-c', 'copy', '-bsf:a', 'aac_adtstoasc', '-f', 'segment',
+                                f'q=0.8,en-US;q=0.7,en;? Origin: https://live.bilibili.com/{room_id}? '
+                                'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+                                '(KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36"\r\n',
+                    '-i', m3u8_address, '-c', 'copy', '-bsf:a', 'aac_adtstoasc', '-f', 'segment',
                     '-segment_time', str(segment_time), '-strftime', '1',
                     os.path.join('download', f'{room_id}_%Y%m%d_%H%M%S.{file_extensions}'), '-y']
         if debug:
