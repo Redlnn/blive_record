@@ -232,9 +232,7 @@ def main():
             # p.send_signal(signal.CTRL_C_EVENT)
             logger.info('正在停止录制，等待ffmpeg退出后本程序会自动退出')
             logger.info('若长时间卡住，请再次按下ctrl+c (可能会损坏视频文件)')
-            while True:
-                if not p.is_alive():
-                    break
+            p.wait()
             logger.info('Bye!')
             sys.exit(0)
         kill_times = 0
