@@ -92,6 +92,7 @@ if save_log:
         console_handler.setLevel(15)
     else:
         console_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(logging.Formatter(file_fms, datefmt=date_format))
     logger.addHandler(file_handler)
 
 
