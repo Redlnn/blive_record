@@ -97,6 +97,7 @@ def record_control():
         elif 'Failed to read handshake response' in line:
             # FFmpeg读取m3u8流失败，等个5s康康会不会恢复，如果一直失败，FFmpeg会自行退出并被下方的`p.poll() is not None`捕捉
             # 此处假设`p.stdout.flush()`会清除缓冲区，则5s后line应该为空而跳过此处的判断，并在65s后被下方超时的判断捕捉尝试结束FFmpeg
+            logger.warning('FFmpeg读取m3u8流失败，请留意')
             time.sleep(5)
             continue
         elif 'Immediate exit requested' in line:
