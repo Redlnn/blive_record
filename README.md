@@ -32,6 +32,13 @@ Linux: python3 -m pip install -r requirements.txt
 4. 下载 FFmpeg 并正确设置环境变量（[下载地址](http://www.ffmpeg.org/download.html)）
 6. Windows 环境请直接双击运行`start.bat`
 7. Linux 环境请先执行 `chmod +x start.sh` 后，再执行 `./start.sh`
+```
+依赖的第三方库:
+1. colorama ~= 0.4.4
+2. colorlog ~= 5.0.1
+3. requests ~= 2.25.1
+4. regex ~= 2020.11.13
+```
 
 ## 使用提醒
 - 若开启了`verbose`或`debug`模式，请注意及时清理日志以避免因录制时间长导致日志文件过大
