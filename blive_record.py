@@ -25,6 +25,7 @@ from subprocess import PIPE, Popen, STDOUT
 
 import requests
 import urllib3
+from colorlog import ColoredFormatter
 from regex import match
 
 # 导入配置
@@ -37,26 +38,48 @@ record_status = False  # 录制状态，True为录制中
 exit_in_seconds = False  # FFmpeg是否是在短时间内异常退出
 
 logging.addLevelName(15, 'FFmpeg')  # 自定义FFmpeg的日志级别
+logging.addLevelName(31, 'FFmpeg WARNING')
+logging.addLevelName(41, 'FFmpeg ERROR')
+
+logging.addLevelName(21, 'NOTICE')
+
 logger = logging.getLogger('Record')
 logger.setLevel(logging.DEBUG)
 
 if debug:
-    fms = "[%(asctime)s.%(msecs)03d %(levelname)s] %(message)s"
+    console_fms = "%(log_color)s[%(asctime)s.%(msecs)03d %(levelname)s] %(message)s"
+    file_fms = "[%(asctime)s.%(msecs)03d %(levelname)s] %(message)s"
 else:
-    fms = "[%(asctime)s %(levelname)s] %(message)s"
+    console_fms = "%(log_color)s[%(asctime)s %(levelname)s] %(message)s"
+    file_fms = "[%(asctime)s.%(msecs)03d %(levelname)s] %(message)s"
 # date_format = "%Y-%m-%d %H:%M:%S"
 date_format = "%H:%M:%S"
 
 # 设置控制台log输出
-default_handler = logging.StreamHandler(sys.stdout)
+console_handler = logging.StreamHandler(sys.stdout)
 if debug:
-    default_handler.setLevel(logging.DEBUG)
+    console_handler.setLevel(logging.DEBUG)
 elif verbose:
-    default_handler.setLevel(15)
+    console_handler.setLevel(15)
 else:
-    default_handler.setLevel(logging.INFO)
-default_handler.setFormatter(logging.Formatter(fms, datefmt=date_format))
-logger.addHandler(default_handler)
+    console_handler.setLevel(logging.INFO)
+console_handler.setFormatter(ColoredFormatter(console_fms,
+                                              datefmt=date_format,
+                                              reset=True,
+                                              log_colors={
+                                                  'DEBUG': 'cyan',
+                                                  'INFO': 'bold_white',
+                                                  'WARNING': 'yellow',
+                                                  'ERROR': 'red',
+                                                  'CRITICAL': 'red,bg_white',
+                                                  'FFmpeg': 'white',
+                                                  'FFmpeg WARNING': 'yellow',
+                                                  'FFmpeg ERROR': 'red',
+                                                  'NOTICE': 'bold_green'
+                                              },
+                                              secondary_log_colors={},
+                                              style='%'))
+logger.addHandler(console_handler)
 
 # 设置log文件输出
 if save_log:
@@ -64,10 +87,11 @@ if save_log:
         os.mkdir(os.path.join('logs'))
     file_handler = handlers.TimedRotatingFileHandler(os.path.join('logs', 'debug.log'), 'midnight', encoding='utf-8')
     if debug:
-        default_handler.setLevel(logging.DEBUG)
+        console_handler.setLevel(logging.DEBUG)
+    elif verbose:
+        console_handler.setLevel(15)
     else:
-        default_handler.setLevel(15)  # 不管verbose是否设置为True，都保存FFmpge的info级别的日志到log文件中
-    file_handler.setFormatter(logging.Formatter(fms, datefmt=date_format))
+        console_handler.setLevel(logging.INFO)
     logger.addHandler(file_handler)
 
 
@@ -84,28 +108,37 @@ def record_control():
     """
     global p, record_status, last_record_time, last_stop_time, start_time, exit_in_seconds  # noqa
     while True:
-        line = p.stdout.readline().decode()
+        line = p.stdout.readline().decode().strip()
         p.stdout.flush()
-        logger.log(15, line.rstrip())
-        if match('video:[0-9kmgB]* audio:[0-9kmgB]* subtitle:[0-9kmgB]*', line) or 'Exiting normally' in line:
-            last_stop_time = get_timestamp()  # 获取录制结束的时间
-            record_status = False  # 如果FFmpeg正常结束录制则退出本循环
-            p.wait()
-            break
-        elif match('frame=[0-9]', line) or 'Opening' in line:
-            last_record_time = get_timestamp()  # 获取最后录制的时间
-        elif 'Failed to read handshake response' in line:
-            # FFmpeg读取m3u8流失败，等个5s康康会不会恢复，如果一直失败，FFmpeg会自行退出并被下方的`p.poll() is not None`捕捉
-            # 此处假设`p.stdout.flush()`会清除缓冲区，则5s后line应该为空而跳过此处的判断，并在65s后被下方超时的判断捕捉尝试结束FFmpeg
-            logger.warning('FFmpeg读取m3u8流失败，请留意')
-            time.sleep(5)
-            continue
-        elif 'Immediate exit requested' in line:
-            logger.warning('FFmpeg已被强制停止，请检查日志与录像文件！')
-            last_stop_time = get_timestamp()  # 获取录制结束的时间
-            record_status = False
-            p.wait()
-            break
+
+        if line != '':
+            if '[warning]' in line:
+                logger.log(31, line)
+            elif '[error]' in line:
+                logger.log(41, line)
+            else:
+                logger.log(15, line)
+
+            if match('video:[0-9kmgB]* audio:[0-9kmgB]* subtitle:[0-9kmgB]*', line) or 'Exiting normally' in line:
+                last_stop_time = get_timestamp()  # 获取录制结束的时间
+                record_status = False  # 如果FFmpeg正常结束录制则退出本循环
+                p.wait()
+                break
+            elif match('frame=[0-9]', line) or 'Opening' in line:
+                last_record_time = get_timestamp()  # 获取最后录制的时间
+            elif 'Failed to read handshake response' in line:
+                # FFmpeg读取m3u8流失败，等个5s康康会不会恢复，如果一直失败，FFmpeg会自行退出并被下方的`p.poll() is not None`捕捉
+                # 此处假设`p.stdout.flush()`会清除缓冲区，则5s后line应该为空而跳过此处的判断，并在65s后被下方超时的判断捕捉尝试结束FFmpeg
+                logger.warning('FFmpeg读取m3u8流失败，请留意')
+                time.sleep(5)
+                continue
+            elif 'Immediate exit requested' in line:
+                logger.warning('FFmpeg已被强制停止，请检查日志与录像文件！')
+                last_stop_time = get_timestamp()  # 获取录制结束的时间
+                record_status = False
+                p.wait()
+                break
+
         if (get_timestamp() - last_record_time) >= 65:
             logger.warning('最后一次录制到目前已超65s，将尝试发送终止信号并持续等待FFmpeg退出')
             if p.poll() is None:
@@ -124,6 +157,7 @@ def record_control():
             last_stop_time = get_timestamp()  # 获取录制结束的时间
             record_status = False
             break
+
         exit_code = p.poll()
         if exit_code is not None and exit_code != 0:  # 如果FFmpeg已退出但没有被上面的if捕捉到，则当作异常退出
             logger.warning('FFmpeg未正常退出，请检查日志与录像文件！')
@@ -174,6 +208,7 @@ def main():
             elif live_status == 0:
                 logger.info(f'直播间{room_id}没有开播，将在等待{check_time}s后重新开始检测')
             time.sleep(check_time)
+
         if not os.path.exists(os.path.join('download')):
             try:
                 os.mkdir(os.path.join('download'))
@@ -183,11 +218,13 @@ def main():
         if os.path.isfile(os.path.join('download')):
             logger.error('存在与下载文件夹同名的文件')
             sys.exit(1)
+
         logger.info(f'直播间{room_id}正在直播，准备开始录制')
         # 如果上次录制停止到本次开始录制的时间差小于30s，则认为上次录制时FFmpeg可能异常断开或停止
         if 0 < last_stop_time - get_timestamp() < 30:
             logger.warning('***检测到上次录制时FFmpeg可能异常断开或停止，请检查录制文件是否存在问题***')
             last_stop_time = 0
+
         try:
             m3u8_list = requests.get(
                     f'https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl?cid={room_id}&platform=h5&qn=10000',
@@ -251,12 +288,12 @@ def main():
                     break
                 # 上面两处注释提到的问题会导致这里出现误差（大概多十几到几百毫秒？），没有解决的想法和思路
                 record_length = time.gmtime(get_timestamp() - start_time)
-                logger.info(f'--==>>> 已录制 {time.strftime("%H:%M:%S", record_length)} <<<==--')  # 秒数不一定准
+                logger.log(21, f'--==>>> 已录制 {time.strftime("%H:%M:%S", record_length)} <<<==--')  # 秒数不一定准
             record_control_thread.join()
         except KeyboardInterrupt:
             # p.send_signal(signal.CTRL_C_EVENT)  # 貌似FFmpeg可以检测到控制台中按下的ctrl-c，因此注释掉
-            logger.info('正在停止录制，等待ffmpeg退出...')
-            logger.info('若长时间卡住，请再次按下ctrl-c (可能会损坏视频文件)')
+            logger.log(21, '正在停止录制并等待ffmpeg退出...')
+            logger.log(21, '若长时间卡住，请尝试再次按下ctrl-c (可能会损坏视频文件)')
             p.wait()  # 等待FFmpeg退出
             logger.info('FFmpeg已退出，程序即将退出')
             logger.info('Bye!')
