@@ -30,12 +30,14 @@ from regex import match
 
 # 导入配置
 from config import (check_time, debug, file_extensions, room_id, save_log, segment_time, verbose)  # noqa
+from windowsInhibitor import WindowsInhibitor
 
 # 提前定义要用到的变量
 last_record_time = 0  # 上次录制成功的时间
 last_stop_time = 0  # 上次停止录制的时间
 record_status = False  # 录制状态，True为录制中
 exit_in_seconds = False  # FFmpeg是否是在短时间内异常退出
+os_sleep = None
 
 logging.addLevelName(15, 'FFmpeg')  # 自定义FFmpeg的日志级别
 logging.addLevelName(31, 'FFmpeg WARNING')
@@ -107,7 +109,7 @@ def record_control():
     """
     录制过程中要执行的检测与判断
     """
-    global p, record_status, last_record_time, last_stop_time, start_time, exit_in_seconds  # noqa
+    global exit_in_seconds, last_record_time, last_stop_time, p, record_status, start_time
     while True:
         line = p.stdout.readline().decode().strip()
         p.stdout.flush()
@@ -185,7 +187,10 @@ def time_countdown(sec: int):
 
 
 def main():
-    global p, room_id, record_status, last_record_time, last_stop_time, start_time, exit_in_seconds  # noqa
+    global exit_in_seconds, last_record_time, last_stop_time, os_sleep, p, record_status, room_id, start_time
+    if os.name == 'nt':
+        os_sleep = WindowsInhibitor()
+        os_sleep.inhibit()
     while True:
         record_status = False
         while True:
@@ -227,9 +232,8 @@ def main():
             last_stop_time = 0
 
         try:
-            m3u8_list = requests.get(
-                    f'https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl?cid={room_id}&platform=h5&qn=10000',
-                    timeout=(5, 5))
+            m3u8_list = requests.get(f'https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl?cid={room_id}'
+                                     '&platform=h5&qn=10000', timeout=(5, 5))
         except (requests.exceptions.ReadTimeout, requests.exceptions.Timeout, requests.exceptions.ConnectTimeout):
             logger.error(f'从B站API获取直播媒体流链接时网络超时，请检查网络连接，将在等待{check_time}s后重新开始检测')
             time.sleep(check_time)
@@ -289,7 +293,7 @@ def main():
                     break
                 # 上面两处注释提到的问题会导致这里出现误差（大概多十几到几百毫秒？），没有解决的想法和思路
                 record_length = time.gmtime(get_timestamp() - start_time)
-                logger.log(21, f'--==>>> 已录制 {time.strftime("%H:%M:%S", record_length)} <<<==--')  # 秒数不一定准
+                logger.log(21, f'>>> 已录制 {time.strftime("%H:%M:%S", record_length)}')  # 秒数不一定准
             record_control_thread.join()
         except KeyboardInterrupt:
             # p.send_signal(signal.CTRL_C_EVENT)  # 貌似FFmpeg可以检测到控制台中按下的ctrl-c，因此注释掉
@@ -297,6 +301,8 @@ def main():
             logger.log(21, '若长时间卡住，请尝试再次按下ctrl-c (可能会损坏视频文件)')
             p.wait()  # 等待FFmpeg退出
             logger.info('FFmpeg已退出，程序即将退出')
+            if os_sleep:
+                os_sleep.uninhibit()
             logger.info('Bye!')
             sys.exit(0)
         if exit_in_seconds:
