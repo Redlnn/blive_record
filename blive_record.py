@@ -261,8 +261,8 @@ def main():
             logger.debug('FFmpeg命令如下 ↓')
             command_str = ''
             for _ in command:
-                command_str += _
-            logger.debug(command_str)
+                command_str += f'{_} '
+            logger.debug(command_str.rstrip())
         ffmpeg_process = Popen(command, stdin=PIPE, stdout=PIPE, stderr=STDOUT, shell=False)
         start_time = last_record_time = get_timestamp()
         record_status = True
