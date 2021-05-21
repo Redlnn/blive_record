@@ -43,7 +43,7 @@ logging.addLevelName(15, 'FFmpeg')  # 自定义FFmpeg的日志级别
 logging.addLevelName(31, 'FFmpeg WARNING')
 logging.addLevelName(41, 'FFmpeg ERROR')
 
-logging.addLevelName(21, 'NOTICE')
+logging.addLevelName(21, 'NOTICE')  # 自定义部分通知的级别
 
 logger = logging.getLogger('Record')
 logger.setLevel(logging.DEBUG)
@@ -109,10 +109,10 @@ def record_control():
     """
     录制过程中要执行的检测与判断
     """
-    global exit_in_seconds, last_record_time, last_stop_time, p, record_status, start_time
+    global exit_in_seconds, last_record_time, last_stop_time, ffmpeg_process, record_status, start_time
     while True:
-        line = p.stdout.readline().decode().strip()
-        p.stdout.flush()
+        line = ffmpeg_process.stdout.readline().decode().strip()
+        ffmpeg_process.stdout.flush()
 
         if line != '':
             if '[warning]' in line:
@@ -125,13 +125,13 @@ def record_control():
             if match('video:[0-9kmgB]* audio:[0-9kmgB]* subtitle:[0-9kmgB]*', line) or 'Exiting normally' in line:
                 last_stop_time = get_timestamp()  # 获取录制结束的时间
                 record_status = False  # 如果FFmpeg正常结束录制则退出本循环
-                p.wait()
+                ffmpeg_process.wait()
                 break
             elif match('frame=[0-9]', line) or 'Opening' in line:
                 last_record_time = get_timestamp()  # 获取最后录制的时间
             elif 'Failed to read handshake response' in line:
-                # FFmpeg读取m3u8流失败，等个5s康康会不会恢复，如果一直失败，FFmpeg会自行退出并被下方的`p.poll() is not None`捕捉
-                # 此处假设`p.stdout.flush()`会清除缓冲区，则5s后line应该为空而跳过此处的判断，并在65s后被下方超时的判断捕捉尝试结束FFmpeg
+                # FFmpeg读取m3u8流失败，等个5s康康会不会恢复，如果一直失败，FFmpeg会自行退出并被下方的`ffmpeg_process.poll() is not None`捕捉
+                # 此处假设`ffmpeg_process.stdout.flush()`会清除缓冲区，则5s后line应该为空而跳过此处的判断，并在65s后被下方超时的判断捕捉尝试结束FFmpeg
                 logger.warning('FFmpeg读取m3u8流失败，请留意')
                 time.sleep(5)
                 continue
@@ -139,41 +139,41 @@ def record_control():
                 logger.warning('FFmpeg已被强制停止，请检查日志与录像文件！')
                 last_stop_time = get_timestamp()  # 获取录制结束的时间
                 record_status = False
-                p.wait()
+                ffmpeg_process.wait()
                 break
 
         if (get_timestamp() - last_record_time) >= 65:
             logger.warning('最后一次录制到目前已超65s，将尝试发送终止信号并持续等待FFmpeg退出')
-            if p.poll() is None:
-                p.send_signal(signal.CTRL_C_EVENT)  # 若最后一次录制到目前已超过65s，则认为FFmpeg卡死，尝试发送终止信号
+            if ffmpeg_process.poll() is None:
+                ffmpeg_process.send_signal(signal.CTRL_C_EVENT)  # 若最后一次录制到目前已超过65s，则认为FFmpeg卡死，尝试发送终止信号
                 time.sleep(10)
-            if p.poll() is None:
-                p.send_signal(signal.SIGTERM)
+            if ffmpeg_process.poll() is None:
+                ffmpeg_process.send_signal(signal.SIGTERM)
                 time.sleep(1)
-            if p.poll() is None:
-                p.send_signal(signal.SIGKILL)
+            if ffmpeg_process.poll() is None:
+                ffmpeg_process.send_signal(signal.SIGKILL)
                 time.sleep(1)
-            if p.poll() is None:
-                p.kill()
-                p.wait()
+            if ffmpeg_process.poll() is None:
+                ffmpeg_process.kill()
+                ffmpeg_process.wait()
             logger.warning('FFmpeg已被强制停止，请检查日志与录像文件！')
             last_stop_time = get_timestamp()  # 获取录制结束的时间
             record_status = False
             break
 
-        exit_code = p.poll()
+        exit_code = ffmpeg_process.poll()
         if exit_code is not None and exit_code != 0:  # 如果FFmpeg已退出但没有被上面的if捕捉到，则当作异常退出
             logger.warning('FFmpeg未正常退出，请检查日志与录像文件！')
             last_stop_time = get_timestamp()  # 获取录制结束的时间
             record_status = False
             if (last_stop_time - start_time) <= 10:
                 exit_in_seconds = True
-            p.wait()
+            ffmpeg_process.wait()
             break
         elif exit_code == 0:  # FFmpeg正常退出
             last_stop_time = get_timestamp()  # 获取录制结束的时间
             record_status = False  # 如果FFmpeg正常结束录制则退出本循环
-            p.wait()
+            ffmpeg_process.wait()
             break
 
 
@@ -187,7 +187,7 @@ def time_countdown(sec: int):
 
 
 def main():
-    global exit_in_seconds, last_record_time, last_stop_time, os_sleep, p, record_status, room_id, start_time
+    global exit_in_seconds, last_record_time, last_stop_time, os_sleep, ffmpeg_process, record_status, room_id, start_time
     if os.name == 'nt':
         os_sleep = WindowsInhibitor()
         os_sleep.inhibit()
@@ -225,7 +225,7 @@ def main():
             logger.error('存在与下载文件夹同名的文件')
             sys.exit(1)
 
-        logger.info(f'直播间{room_id}正在直播，准备开始录制')
+        logger.info(f'检测到直播间{room_id}正在直播，开始录制')
         # 如果上次录制停止到本次开始录制的时间差小于30s，则认为上次录制时FFmpeg可能异常断开或停止
         if 0 < last_stop_time - get_timestamp() < 30:
             logger.warning('***检测到上次录制时FFmpeg可能异常断开或停止，请检查录制文件是否存在问题***')
@@ -240,7 +240,7 @@ def main():
             continue
         except (urllib3.exceptions.NewConnectionError, urllib3.exceptions.MaxRetryError,
                 requests.exceptions.ConnectionError):
-            logger.error(f'无法连接至B站API获取直播媒体流链接，请检查网络连接，将在等待{check_time}s后重新开始检测')
+            logger.error(f'无法连接至B站API获取以直播媒体流链接，请检查网络连接，将在等待{check_time}s后重新开始检测')
             time.sleep(check_time)
             continue
         m3u8_address = loads(m3u8_list.text)['data']['durl'][0]['url']  # noqa
@@ -253,7 +253,7 @@ def main():
                     '-headers', '"Accept: */*? Accept-Encoding: gzip, deflate, br? Accept-Language: zh;q=0.9,zh-CN;'
                                 f'q=0.8,en-US;q=0.7,en;? Origin: https://live.bilibili.com/{room_id}? '
                                 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-                                '(KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36"\r\n',
+                                '(KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36 Edg/90.0.818.66 Edge/18.19041"\r\n',
                     '-i', m3u8_address, '-c', 'copy', '-bsf:a', 'aac_adtstoasc', '-f', 'segment',
                     '-segment_time', str(segment_time), '-strftime', '1',
                     os.path.join('download', f'{room_id}_%Y%m%d_%H%M%S.{file_extensions}'), '-y']
@@ -263,7 +263,7 @@ def main():
             for _ in command:
                 command_str += _
             logger.debug(command_str)
-        p = Popen(command, stdin=PIPE, stdout=PIPE, stderr=STDOUT, shell=False)
+        ffmpeg_process = Popen(command, stdin=PIPE, stdout=PIPE, stderr=STDOUT, shell=False)
         start_time = last_record_time = get_timestamp()
         record_status = True
         try:
@@ -291,15 +291,15 @@ def main():
                     # 暴力解决CPU占用高的问题，也会导致下面的计时有误差。也许时间短一点也行，不过没必要这么短
                 if not record_status:
                     break
-                # 上面两处注释提到的问题会导致这里出现误差（大概多十几到几百毫秒？），没有解决的想法和思路
-                record_length = time.gmtime(get_timestamp() - start_time)
-                logger.log(21, f'>>> 已录制 {time.strftime("%H:%M:%S", record_length)}')  # 秒数不一定准
+                # 上面两处注释提到的问题会导致这里出现一点误差（大概多十几到几百毫秒？），没有解决的想法和思路
+                # 注：计时误差不会对录制产生影响，此处显示的时间也是正确的，误差仅指计时不是整秒而已
+                logger.log(21, f'>>> 已录制 {time.strftime("%H:%M:%S", time.gmtime(get_timestamp() - start_time))}')
             record_control_thread.join()
         except KeyboardInterrupt:
-            # p.send_signal(signal.CTRL_C_EVENT)  # 貌似FFmpeg可以检测到控制台中按下的ctrl-c，因此注释掉
-            logger.log(21, '正在停止录制并等待ffmpeg退出...')
+            # ffmpeg_process.send_signal(signal.CTRL_C_EVENT)  # 貌似FFmpeg可以捕捉到控制台中按下的ctrl-c，因此注释掉
+            logger.log(21, '正在停止录制并等待FFmpeg退出...')
             logger.log(21, '若长时间卡住，请尝试再次按下ctrl-c (可能会损坏视频文件)')
-            p.wait()  # 等待FFmpeg退出
+            ffmpeg_process.wait()  # 等待FFmpeg退出
             logger.info('FFmpeg已退出，程序即将退出')
             if os_sleep:
                 os_sleep.uninhibit()
