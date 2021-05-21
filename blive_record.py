@@ -51,7 +51,7 @@ if debug:
     file_fms = "[%(asctime)s.%(msecs)03d %(levelname)s] %(message)s"
 else:
     console_fms = "%(log_color)s[%(asctime)s %(levelname)s] %(message)s"
-    file_fms = "[%(asctime)s.%(msecs)03d %(levelname)s] %(message)s"
+    file_fms = "[%(asctime)s %(levelname)s] %(message)s"
 # date_format = "%Y-%m-%d %H:%M:%S"
 date_format = "%H:%M:%S"
 
