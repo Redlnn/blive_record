@@ -89,11 +89,11 @@ if save_log:
         os.mkdir(os.path.join('logs'))
     file_handler = handlers.TimedRotatingFileHandler(os.path.join('logs', 'debug.log'), 'midnight', encoding='utf-8')
     if debug:
-        console_handler.setLevel(logging.DEBUG)
+        file_handler.setLevel(logging.DEBUG)
     elif verbose:
-        console_handler.setLevel(15)
+        file_handler.setLevel(15)
     else:
-        console_handler.setLevel(logging.INFO)
+        file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(logging.Formatter(file_fms, datefmt=date_format))
     logger.addHandler(file_handler)
 
