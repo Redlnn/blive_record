@@ -209,6 +209,7 @@ def main():
                 time.sleep(check_time)
                 continue
             live_status = loads(room_info.text)['data']['live_status']
+            real_room_id = loads(room_info.text)['data']['room_id']
             if live_status == 1:
                 break
             elif live_status == 0:
@@ -232,7 +233,7 @@ def main():
             last_stop_time = 0
 
         try:
-            m3u8_list = requests.get(f'https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl?cid={room_id}'
+            m3u8_list = requests.get(f'https://api.live.bilibili.com/room/v1/Room/playUrl?cid={real_room_id}'
                                      '&platform=h5&qn=10000', timeout=(5, 5))
         except (requests.exceptions.ReadTimeout, requests.exceptions.Timeout, requests.exceptions.ConnectTimeout):
             logger.error(f'从B站API获取直播媒体流链接时网络超时，请检查网络连接，将在等待{check_time}s后重新开始检测')
