@@ -115,9 +115,10 @@ def record_control():
         ffmpeg_process.stdout.flush()
 
         if line != '':
-            if '[warning]' in line:
+            line_lower = line.lower()
+            if 'warn' in line_lower:
                 logger.log(31, line)
-            elif '[error]' in line:
+            elif 'error' in line_lower or 'fail' in line_lower or 'fatal' in line_lower:
                 logger.log(41, line)
             else:
                 logger.log(15, line)
