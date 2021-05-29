@@ -213,6 +213,9 @@ def main():
                 continue
             live_status = loads(room_info.text)['data']['live_status']
             real_room_id = loads(room_info.text)['data']['room_id']
+            if real_room_id != room_id:
+                logger.info(f'直播间 {room_id} 的真实直播间ID为 {real_room_id}')
+
             if live_status == 1:
                 break
             elif live_status == 0:
