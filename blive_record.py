@@ -88,10 +88,8 @@ if save_log:
     file_handler = handlers.TimedRotatingFileHandler(os.path.join('logs', 'debug.log'), 'midnight', encoding='utf-8')
     if debug:
         file_handler.setLevel(logging.DEBUG)
-    elif verbose:
-        file_handler.setLevel(15)
     else:
-        file_handler.setLevel(logging.INFO)
+        file_handler.setLevel(15)
     file_handler.setFormatter(logging.Formatter(file_fmt, datefmt="%Y-%m-%d %H:%M:%S"))
     logger.addHandler(file_handler)
 
