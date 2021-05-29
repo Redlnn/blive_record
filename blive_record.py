@@ -35,6 +35,7 @@ from windowsInhibitor import WindowsInhibitor
 # 提前定义要用到的变量
 last_record_time = 0  # 上次录制成功的时间
 last_stop_time = 0  # 上次停止录制的时间
+stop_times = 0  # 退出次数（仅在异常退出时增加）
 record_status = False  # 录制状态，True为录制中
 exit_in_seconds = False  # FFmpeg是否是在短时间内异常退出
 os_sleep = None
@@ -105,7 +106,7 @@ def record_control():
     """
     录制过程中要执行的检测与判断
     """
-    global exit_in_seconds, last_record_time, last_stop_time, ffmpeg_process, record_status, start_time
+    global exit_in_seconds, last_record_time, last_stop_time, ffmpeg_process, record_status, start_time, stop_times
     while True:
         line = ffmpeg_process.stdout.readline().decode().strip()
         ffmpeg_process.stdout.flush()
@@ -121,6 +122,7 @@ def record_control():
 
             if match('video:[0-9kmgB]* audio:[0-9kmgB]* subtitle:[0-9kmgB]*', line) or 'Exiting normally' in line:
                 last_stop_time = get_timestamp()  # 获取录制结束的时间
+                stop_times += 1
                 record_status = False  # 如果FFmpeg正常结束录制则退出本循环
                 ffmpeg_process.wait()
                 break
@@ -135,6 +137,7 @@ def record_control():
             elif 'Immediate exit requested' in line:
                 logger.warning('FFmpeg已被强制停止，请检查日志与录像文件！')
                 last_stop_time = get_timestamp()  # 获取录制结束的时间
+                stop_times += 1
                 record_status = False
                 ffmpeg_process.wait()
                 break
@@ -155,6 +158,7 @@ def record_control():
                 ffmpeg_process.wait()
             logger.warning('FFmpeg已被强制停止，请检查日志与录像文件！')
             last_stop_time = get_timestamp()  # 获取录制结束的时间
+            stop_times += 1
             record_status = False
             break
 
@@ -162,6 +166,7 @@ def record_control():
         if exit_code is not None and exit_code != 0:  # 如果FFmpeg已退出但没有被上面的if捕捉到，则当作异常退出
             logger.warning('FFmpeg未正常退出，请检查日志与录像文件！')
             last_stop_time = get_timestamp()  # 获取录制结束的时间
+            stop_times += 1
             record_status = False
             if (last_stop_time - start_time) <= 10:
                 exit_in_seconds = True
@@ -169,6 +174,7 @@ def record_control():
             break
         elif exit_code == 0:  # FFmpeg正常退出
             last_stop_time = get_timestamp()  # 获取录制结束的时间
+            stop_times += 1
             record_status = False  # 如果FFmpeg正常结束录制则退出本循环
             ffmpeg_process.wait()
             break
@@ -184,7 +190,7 @@ def time_countdown(sec: int):
 
 
 def main():
-    global exit_in_seconds, last_record_time, last_stop_time, os_sleep, ffmpeg_process, record_status, room_id, start_time
+    global exit_in_seconds, last_record_time, last_stop_time, os_sleep, ffmpeg_process, record_status, room_id, start_time, stop_times
     if os.name == 'nt':
         os_sleep = WindowsInhibitor()
         os_sleep.inhibit()
@@ -192,7 +198,7 @@ def main():
         record_status = False
         while True:
             logger.info('------------------------------')
-            logger.info(f'正在检测直播间{room_id}是否开播')
+            logger.info(f'正在检测直播间 {room_id} 是否开播')
             try:
                 room_info = requests.get(f'https://api.live.bilibili.com/room/v1/Room/get_info?room_id={room_id}',
                                          timeout=(5, 5))
@@ -210,7 +216,7 @@ def main():
             if live_status == 1:
                 break
             elif live_status == 0:
-                logger.info(f'直播间{room_id}没有开播，将在等待{check_time}s后重新开始检测')
+                logger.info(f'直播间 {room_id} 没有开播，将在等待 {check_time} s后重新开始检测')
             time.sleep(check_time)
 
         if not os.path.exists(os.path.join('download')):
@@ -223,11 +229,14 @@ def main():
             logger.error('存在与下载文件夹同名的文件')
             sys.exit(1)
 
-        logger.info(f'检测到直播间{room_id}正在直播，开始录制')
+        logger.info(f'检测到直播间 {room_id} 正在直播，开始录制')
+
         # 如果上次录制停止到本次开始录制的时间差小于30s，则认为上次录制时FFmpeg可能异常断开或停止
-        if 0 < last_stop_time - get_timestamp() < 30:
-            logger.warning('***检测到上次录制时FFmpeg可能异常断开或停止，请检查录制文件是否存在问题***')
-            last_stop_time = 0
+        if 0 < (get_timestamp() - last_stop_time) < 30:
+            logger.warning('>>> 检测到上次录制时FFmpeg可能异常断开或停止，请检查录制文件是否存在问题')
+        if (get_timestamp() - last_stop_time) > 60:
+            stop_times = 0
+        last_stop_time = 0
 
         try:
             m3u8_list = requests.get(f'https://api.live.bilibili.com/room/v1/Room/playUrl?cid={real_room_id}'
@@ -292,6 +301,8 @@ def main():
                 # 上面两处注释提到的问题会导致这里出现一点误差（大概多十几到几百毫秒？），没有解决的想法和思路
                 # 注：计时误差不会对录制产生影响，此处显示的时间也是正确的，误差仅指计时不是整秒而已
                 logger.log(21, f'>>> 已录制 {time.strftime("%H:%M:%S", time.gmtime(get_timestamp() - start_time))}')
+                if stop_times > 0:
+                    logger.warning(f'>>> 已异常退出 {stop_times} 次')
             record_control_thread.join()
         except KeyboardInterrupt:
             # ffmpeg_process.send_signal(signal.CTRL_C_EVENT)  # 貌似FFmpeg可以捕捉到控制台中按下的ctrl-c，因此注释掉
@@ -303,9 +314,10 @@ def main():
                 os_sleep.uninhibit()
             logger.info('Bye!')
             sys.exit(0)
+
         if exit_in_seconds:
             exit_in_seconds = False
-            logger.warning(f'因FFmpeg在短时间内非正常退出，为防止反复刷屏，将在等待{check_time}s后重新开始检测直播间')
+            logger.warning(f'因FFmpeg在短时间内异常退出，为防止反复刷屏，将在等待{check_time}s后重新开始检测直播间')
             time.sleep(check_time)
         else:
             logger.info('FFmpeg已退出，重新开始检测直播间')
