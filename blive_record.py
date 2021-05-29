@@ -203,23 +203,23 @@ def main():
                 room_info = requests.get(f'https://api.live.bilibili.com/room/v1/Room/get_info?room_id={room_id}',
                                          timeout=(5, 5))
             except (requests.exceptions.ReadTimeout, requests.exceptions.Timeout, requests.exceptions.ConnectTimeout):
-                logger.error(f'尝试连接至B站API时网络超时，请检查网络连接，将在等待{check_time}s后重新开始检测')
+                logger.error(f'尝试连接至B站API时网络超时，请检查网络连接，将在等待{check_time}s后重新检测')
                 time.sleep(check_time)
                 continue
             except (urllib3.exceptions.NewConnectionError, urllib3.exceptions.MaxRetryError,
                     requests.exceptions.ConnectionError):
-                logger.error(f'无法连接至B站API，请检查网络连接，将在等待{check_time}s后重新开始检测')
+                logger.error(f'无法连接至B站API，请检查网络连接，将在等待{check_time}s后重新检测')
                 time.sleep(check_time)
                 continue
             live_status = loads(room_info.text)['data']['live_status']
             real_room_id = loads(room_info.text)['data']['room_id']
             if real_room_id != room_id:
-                logger.info(f'直播间 {room_id} 的真实直播间ID为 {real_room_id}')
+                logger.info(f'直播间 {room_id} 的真实直播间ID为： {real_room_id}')
 
             if live_status == 1:
                 break
             elif live_status == 0:
-                logger.info(f'直播间 {room_id} 没有开播，将在等待 {check_time} s后重新开始检测')
+                logger.info(f'直播间 {room_id} 没有开播，将在等待 {check_time} s后重新检测')
             time.sleep(check_time)
 
         if not os.path.exists(os.path.join('download')):
@@ -229,7 +229,7 @@ def main():
                 logger.error(f'无法创建下载文件夹 ↓\n{traceback.format_exc()}')
                 sys.exit(1)
         if os.path.isfile(os.path.join('download')):
-            logger.error('存在与下载文件夹同名的文件')
+            logger.error('存在与下载文件夹同名的文件，请删除后重试')
             sys.exit(1)
 
         logger.info(f'检测到直播间 {room_id} 正在直播，开始录制')
@@ -303,9 +303,9 @@ def main():
                     break
                 # 上面两处注释提到的问题会导致这里出现一点误差（大概多十几到几百毫秒？），没有解决的想法和思路
                 # 注：计时误差不会对录制产生影响，此处显示的时间也是正确的，误差仅指计时不是整秒而已
-                logger.log(21, f'>>> 已录制 {time.strftime("%H:%M:%S", time.gmtime(get_timestamp() - start_time))}')
+                logger.log(21, f'>>> 本次已录制 {time.strftime("%H:%M:%S", time.gmtime(get_timestamp() - start_time))}')
                 if stop_times > 0:
-                    logger.warning(f'>>> 已异常退出 {stop_times} 次')
+                    logger.warning(f'>>> 累计已异常断开 {stop_times} 次')
             record_control_thread.join()
         except KeyboardInterrupt:
             # ffmpeg_process.send_signal(signal.CTRL_C_EVENT)  # 貌似FFmpeg可以捕捉到控制台中按下的ctrl-c，因此注释掉
@@ -320,7 +320,7 @@ def main():
 
         if exit_in_seconds:
             exit_in_seconds = False
-            logger.warning(f'因FFmpeg在短时间内异常退出，为防止反复刷屏，将在等待{check_time}s后重新开始检测直播间')
+            logger.warning(f'因FFmpeg在短时间内异常退出，为防止反复退出刷屏，将在等待{check_time}s后再检测')
             time.sleep(check_time)
         else:
             logger.info('FFmpeg已退出，重新开始检测直播间')
