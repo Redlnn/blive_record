@@ -49,13 +49,11 @@ logger = logging.getLogger('Record')
 logger.setLevel(logging.DEBUG)
 
 if debug:
-    console_fms = "%(log_color)s[%(asctime)s.%(msecs)03d %(levelname)s] %(message)s"
-    file_fms = "[%(asctime)s.%(msecs)03d %(levelname)s] %(message)s"
+    console_fmt = "%(log_color)s[%(asctime)s,%(msecs)03d %(levelname)s] %(message)s"
+    file_fmt = "[%(asctime)s,%(msecs)03d %(levelname)s] %(message)s"
 else:
-    console_fms = "%(log_color)s[%(asctime)s %(levelname)s] %(message)s"
-    file_fms = "[%(asctime)s %(levelname)s] %(message)s"
-# date_format = "%Y-%m-%d %H:%M:%S"
-date_format = "%H:%M:%S"
+    console_fmt = "%(log_color)s[%(asctime)s %(levelname)s] %(message)s"
+    file_fmt = "[%(asctime)s %(levelname)s] %(message)s"
 
 # 设置控制台log输出
 console_handler = logging.StreamHandler(sys.stdout)
@@ -65,8 +63,8 @@ elif verbose:
     console_handler.setLevel(15)
 else:
     console_handler.setLevel(logging.INFO)
-console_handler.setFormatter(ColoredFormatter(console_fms,
-                                              datefmt=date_format,
+console_handler.setFormatter(ColoredFormatter(console_fmt,
+                                              datefmt="%H:%M:%S",
                                               reset=True,
                                               log_colors={
                                                   'DEBUG': 'cyan',
@@ -94,7 +92,7 @@ if save_log:
         file_handler.setLevel(15)
     else:
         file_handler.setLevel(logging.INFO)
-    file_handler.setFormatter(logging.Formatter(file_fms, datefmt=date_format))
+    file_handler.setFormatter(logging.Formatter(file_fmt, datefmt="%Y-%m-%d %H:%M:%S"))
     logger.addHandler(file_handler)
 
 
