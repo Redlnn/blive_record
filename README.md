@@ -1,4 +1,5 @@
 # B站直播录播姬 &nbsp; By: Red_lnn
+目前我已不太需要用这个项目，没啥事应该不会更新了~但还是欢迎提pull request，issue不一定会处理~
 
 ## 注意事项
 - 不允许将本项目运用于非法以及违反[哔哩哔哩弹幕网用户协议](https://www.bilibili.com/blackboard/topic/activity-cn8bxPLzz.html)的用途
