@@ -27,4 +27,4 @@ class WindowsInhibitor:
         ctypes.windll.kernel32.SetThreadExecutionState(WindowsInhibitor.ES_CONTINUOUS)
 
 
-__all__ = [WindowsInhibitor]
+__all__ = ['WindowsInhibitor']
