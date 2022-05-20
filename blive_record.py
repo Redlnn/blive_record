@@ -269,9 +269,7 @@ def main():
                     os.path.join('download', f'{room_id}_%Y%m%d_%H%M%S.{file_extensions}'), '-y']
         if debug:
             logger.debug('FFmpeg命令如下 ↓')
-            command_str = ''
-            for _ in command:
-                command_str += f'{_} '
+            command_str = ''.join(f'{_} ' for _ in command)
             logger.debug(command_str.rstrip())
         ffmpeg_process = Popen(command, stdin=PIPE, stdout=PIPE, stderr=STDOUT, shell=False)
         start_time = last_record_time = get_timestamp()
@@ -292,13 +290,11 @@ def main():
                 # 使用子线程的方法计时会导致下面的计时出现误差
                 # 之所以使用子线程计时，是因为要在倒计时的同时判断录制状态（就下面这个while循环）
                 # 如果单纯使用time.sleep()来计时，可能会导致FFmpeg在sleep时退出后出现程序卡死的假象
-                while True:
-                    if not record_status:
-                        break
-                    if record_status and not time_countdown_thread.is_alive():
-                        break
-                    time.sleep(1)
+                while record_status and not (
+                    record_status and not time_countdown_thread.is_alive()
+                ):
                     # 暴力解决CPU占用高的问题，也会导致下面的计时有误差。也许时间短一点也行，不过没必要这么短
+                    time.sleep(1)
                 if not record_status:
                     break
                 # 上面两处注释提到的问题会导致这里出现一点误差（大概多十几到几百毫秒？），没有解决的想法和思路
