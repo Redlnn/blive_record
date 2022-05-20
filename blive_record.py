@@ -293,6 +293,7 @@ def main():
                 while record_status and not (
                     record_status and not time_countdown_thread.is_alive()
                 ):
+                    # 暴力解决CPU占用高的问题，也会导致下面的计时有误差。也许时间短一点也行，不过没必要这么短
                     time.sleep(1)
                 if not record_status:
                     break
